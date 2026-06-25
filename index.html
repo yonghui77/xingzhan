@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#050914">
+  <title>星际商路：边境纪元</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="gameCanvas"></canvas>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-orbit"><i></i></span>
+        <div><p>STELLAR FRONTIER</p><strong>星际商路：边境纪元</strong></div>
+      </div>
+      <div class="location">
+        <span id="securityBadge" class="security safe">安全区 1.0</span>
+        <div><strong id="systemName">曙光星系</strong><small id="locationName">晨星贸易站</small></div>
+      </div>
+      <label class="population-control">
+        <span>模拟玩家</span>
+        <select id="aiCountSelect">
+          <option value="8">8</option>
+          <option value="16">16</option>
+          <option value="32">32</option>
+          <option value="64">64</option>
+        </select>
+        <b id="aiOnlineCount">0 在线</b>
+      </label>
+      <div class="wallet"><span>账户余额</span><strong><b id="credits">0</b> ISK</strong></div>
+      <button id="helpBtn" class="icon-btn" title="操作说明">?</button>
+      <button id="soundBtn" class="icon-btn" title="声音">♪</button>
+    </header>
+
+    <aside class="left-hud">
+      <section class="hud-card ship-card">
+        <div class="card-title">
+          <div><p>SHIP STATUS</p><strong id="shipName">拓荒者级</strong></div>
+          <div class="shield-orb" id="shieldOrb"><i></i><b id="shieldOrbValue">100%</b></div>
+        </div>
+        <div class="status-line"><span>护盾</span><b id="shieldText">100 / 100</b><div><i id="shieldBar"></i></div></div>
+        <div class="status-line armor"><span>装甲</span><b id="hullText">100 / 100</b><div><i id="hullBar"></i></div></div>
+        <div class="status-line fuel"><span>跃迁燃料</span><b id="fuelText">8 / 8</b><div><i id="fuelBar"></i></div></div>
+        <div class="ship-stats">
+          <span>火力 <b id="damageStat">12</b></span>
+          <span>货舱 <b id="cargoStat">0/30</b></span>
+          <span>速度 <b id="speedStat">240</b></span>
+        </div>
+      </section>
+
+      <section class="hud-card mission-card">
+        <div class="card-title"><div><p>ACTIVE CONTRACT</p><strong>当前合约</strong></div><button id="cycleMissionBtn" class="mini-btn">换</button></div>
+        <div id="missionContent"></div>
+      </section>
+
+      <section class="hud-card cargo-card">
+        <div class="card-title"><div><p>CARGO HOLD</p><strong>货舱清单</strong></div><span id="cargoValue">0 ISK</span></div>
+        <div id="cargoList" class="cargo-list"></div>
+      </section>
+    </aside>
+
+    <aside class="right-hud">
+      <section class="hud-card radar-card">
+        <div class="card-title"><div><p>LOCAL SCANNER</p><strong>战术雷达</strong></div><span id="localCount">0 信号</span></div>
+        <canvas id="radarCanvas" width="240" height="170"></canvas>
+        <div class="radar-legend">
+          <span><i class="ally"></i>空间站</span><span><i class="resource"></i>资源</span><span><i class="hostile"></i>敌对</span>
+        </div>
+      </section>
+      <section class="hud-card threat-card">
+        <div class="card-title"><div><p>HOSTILE ACTIVITY</p><strong>区域威胁</strong></div><span id="alertLevel">警戒 0</span></div>
+        <div class="threat-row"><span>威胁预算</span><b id="threatBudget">0</b></div>
+        <div class="threat-meter"><i id="threatBar"></i></div>
+        <div class="threat-row"><span>工业信号</span><b id="miningSignal">0%</b></div>
+        <div class="threat-meter mining"><i id="miningSignalBar"></i></div>
+        <div class="pve-status"><i id="pveStatusDot"></i><span id="pveStatus">航线平静</span></div>
+      </section>
+      <section class="hud-card feed-card">
+        <div class="card-title"><div><p>CAPSULEER FEED</p><strong>航行日志</strong></div></div>
+        <div id="eventFeed" class="event-feed"></div>
+      </section>
+    </aside>
+
+    <div id="combatHud" class="combat-hud">
+      <div class="ability"><kbd>鼠标</kbd><span>脉冲炮</span><small id="weaponCooldown">就绪</small></div>
+      <div class="ability"><kbd>E</kbd><span>采矿 / 停靠</span><small>交互</small></div>
+      <div class="ability"><kbd>Shift</kbd><span>推进器</span><small id="boostStatus">可用</small></div>
+      <div class="ability"><kbd>M</kbd><span>星图</span><small>跃迁</small></div>
+    </div>
+
+    <div id="interactionPrompt" class="interaction-prompt hidden"></div>
+    <div id="miningPanel" class="mining-panel hidden">
+      <div class="mining-head"><span>采矿束已锁定</span><b id="miningRange">0m</b></div>
+      <strong id="miningTargetName">钛辉矿脉</strong>
+      <div class="mining-progress"><i id="miningProgressBar"></i></div>
+      <small><kbd>E</kbd> 关闭采矿束 · 超出距离自动中断</small>
+    </div>
+    <div id="targetPanel" class="target-panel hidden">
+      <div><span id="targetType">目标</span><strong id="targetName">—</strong></div>
+      <div class="target-health"><i id="targetHealthBar"></i></div>
+      <div class="target-range-row"><small id="targetDistance">0m</small><small id="targetState">未锁定</small></div>
+      <div class="range-bands"><i id="detectBand"></i><i id="lockBand"></i><i id="weaponBand"></i></div>
+    </div>
+
+    <section id="stationPanel" class="station-panel hidden">
+      <div class="station-shell">
+        <header class="station-header">
+          <div><p>DOCKED · LOCAL MARKET</p><h1 id="stationTitle">晨星贸易站</h1><span id="stationTrait">核心区综合贸易枢纽</span></div>
+          <div class="station-actions">
+            <button id="repairBtn" class="button subtle">维修舰船 <b id="repairCost">0</b></button>
+            <button id="undockBtn" class="button primary">离站</button>
+          </div>
+        </header>
+        <nav class="station-tabs">
+          <button class="active" data-station-tab="market">地区市场</button>
+          <button data-station-tab="shipyard">舰船改装</button>
+          <button data-station-tab="contracts">合约中心</button>
+          <button data-station-tab="intel">区域情报</button>
+        </nav>
+        <div id="marketTab" class="station-tab active">
+          <div class="market-toolbar">
+            <div><p>区域独立库存 · 实物必须运输 · AI玩家实时成交</p><strong id="marketSummary">市场运行正常</strong></div>
+            <div class="market-mode"><button class="active" data-market-mode="buy">购买</button><button data-market-mode="sell">出售</button></div>
+          </div>
+          <div class="market-terminal">
+            <aside class="market-browser">
+              <label class="market-search"><span>⌕</span><input id="marketSearch" type="search" placeholder="搜索商品"></label>
+              <div class="market-group-title">市场分类 <b>5</b></div>
+              <div id="marketItemList" class="market-item-list"></div>
+            </aside>
+            <main class="market-detail">
+              <header class="market-detail-head">
+                <div class="market-selected-icon" id="marketSelectedIcon">◆</div>
+                <div><p id="marketSelectedCategory">工业原料</p><h2 id="marketSelectedName">钛辉矿</h2><span id="marketSelectedDescription">基础舰体与工业组件原料</span></div>
+                <div class="market-quote"><span>市场中间价</span><strong id="marketMidPrice">0 ISK</strong><b id="marketPriceChange">0%</b></div>
+              </header>
+              <div class="market-analysis">
+                <section class="price-chart-panel">
+                  <div class="terminal-section-head"><strong>价格走势</strong><span>最近24个周期</span></div>
+                  <canvas id="marketChart" width="560" height="220"></canvas>
+                </section>
+                <section class="order-book-panel">
+                  <div class="terminal-section-head"><strong>市场深度</strong><span>数量 / 单价</span></div>
+                  <div class="order-columns"><span>数量</span><span>价格 ISK</span><span>累计</span></div>
+                  <div id="sellOrders" class="order-list sell-orders"></div>
+                  <div class="market-spread"><span>价差</span><b id="marketSpread">0 ISK</b></div>
+                  <div id="buyOrders" class="order-list buy-orders"></div>
+                </section>
+              </div>
+              <section class="market-ticket">
+                <div class="ticket-position"><span id="ticketModeLabel">立即购买</span><strong id="ticketAvailable">市场库存 0</strong></div>
+                <label><span>数量</span><input id="tradeQuantity" type="number" min="1" value="1"></label>
+                <div class="quantity-presets"><button data-qty="1">1</button><button data-qty="5">5</button><button data-qty="10">10</button><button data-qty="max">最大</button></div>
+                <div class="ticket-total"><span>预计总额</span><strong id="tradeTotal">0 ISK</strong><small id="tradeFee">含交易税</small></div>
+                <button id="executeTradeBtn" class="execute-trade">确认购买</button>
+              </section>
+            </main>
+            <aside class="market-sidebar">
+              <section>
+                <div class="terminal-section-head"><strong>我的持仓</strong><span id="selectedOwned">0 单位</span></div>
+                <div class="position-card"><span>货舱占用</span><strong id="marketCargoUsage">0 / 30</strong><i><b id="marketCargoBar"></b></i></div>
+              </section>
+              <section>
+                <div class="terminal-section-head"><strong>玩家成交动态</strong><span id="aiTradeRate">0 笔/分</span></div>
+                <div id="aiTradeFeed" class="ai-trade-feed"></div>
+              </section>
+              <section>
+                <div class="terminal-section-head"><strong>地区比较</strong><span>卖出价</span></div>
+                <div id="regionalPrices" class="regional-prices"></div>
+              </section>
+            </aside>
+          </div>
+        </div>
+        <div id="shipyardTab" class="station-tab">
+          <div class="upgrade-layout">
+            <div class="upgrade-intro">
+              <p>SHIP FITTING</p><h2>拓荒者级模块舱</h2>
+              <p>升级不会简单制造等级碾压，而是提高效率并形成不同经营路线。</p>
+              <div class="ship-schematic"><div class="core"></div><i class="wing left"></i><i class="wing right"></i></div>
+            </div>
+            <div id="upgradeGrid" class="upgrade-grid"></div>
+          </div>
+        </div>
+        <div id="contractsTab" class="station-tab">
+          <div class="contracts-head"><div><p>AVAILABLE CONTRACTS</p><h2>本地合约</h2></div><span>完成合约可获得 ISK 与声望</span></div>
+          <div id="contractGrid" class="contract-grid"></div>
+        </div>
+        <div id="intelTab" class="station-tab">
+          <div class="intel-grid">
+            <article><p>MARKET INTEL</p><h2>地区价差</h2><div id="tradeIntel"></div></article>
+            <article><p>SECURITY REPORT</p><h2>航线风险</h2><div id="riskIntel"></div></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mapPanel" class="map-panel hidden">
+      <div class="map-shell">
+        <header><div><p>NAVIGATION NETWORK</p><h2>边境星图</h2></div><button id="closeMapBtn" class="icon-btn">×</button></header>
+        <div class="map-content">
+          <div id="starMap" class="star-map">
+            <svg viewBox="0 0 800 480" aria-hidden="true"><path d="M150 240 L340 125 L590 220 M150 240 L365 365 L590 220 M340 125 L365 365" /></svg>
+          </div>
+          <aside class="route-panel">
+            <p>SELECTED SYSTEM</p><h3 id="routeName">选择一个星系</h3><span id="routeSecurity">—</span>
+            <div id="routeInfo"></div><button id="jumpBtn" class="button primary" disabled>设定跃迁航线</button>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="helpPanel" class="modal hidden">
+      <div class="help-shell">
+        <button id="closeHelpBtn" class="icon-btn close">×</button>
+        <p>FLIGHT MANUAL</p><h2>飞行员快速手册</h2>
+        <div class="help-grid">
+          <div><kbd>W A S D</kbd><strong>驾驶飞船</strong><span>鼠标控制朝向，按住左键或空格开火。</span></div>
+          <div><kbd>E</kbd><strong>采矿与停靠</strong><span>靠近矿石持续采集，靠近空间站停靠。</span></div>
+          <div><kbd>Shift</kbd><strong>推进加速</strong><span>消耗推进能量快速脱离敌人或赶路。</span></div>
+          <div><kbd>M</kbd><strong>打开星图</strong><span>选择相邻星系跃迁，每次消耗1燃料。</span></div>
+        </div>
+        <button id="startBtn" class="button primary">开始航行</button>
+      </div>
+    </section>
+
+    <section id="deathPanel" class="modal hidden">
+      <div class="death-shell"><p>SHIP DESTROYED</p><h2>舰船已损毁</h2><span id="deathReport">保险公司已回收逃生舱。</span><button id="respawnBtn" class="button primary">返回晨星贸易站</button></div>
+    </section>
+
+    <div id="toast" class="toast"></div>
+    <div class="version">DYNAMIC PVE · BUILD 0.3</div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
