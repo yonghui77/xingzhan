@@ -71,12 +71,36 @@ CONTRACT_LIBRARY.push(
 );
 
 const TUTORIAL_STEPS = [
-  { id: "open_market", title: "进入市场交易所", hint: "在星港中枢点击“市场交易所”，先熟悉买卖终端。", target: 1, reward: 0 },
-  { id: "buy_fuel", title: "补满跃迁燃料", hint: "在市场购买 1 单位跃迁燃料。燃料会自动装填到跃迁槽。", target: 1, reward: 0 },
-  { id: "undock", title: "离站出航", hint: "点击右上角“离站”，进入星系空间。", target: 1, reward: 0 },
-  { id: "mine_ore", title: "采集 3 单位资源", hint: "靠近矿石按住 E，先完成一次安全采矿。", target: 3, reward: 0 },
-  { id: "dock_again", title: "返回空间站", hint: "飞回空间站附近按 E 停靠，准备出售货物。", target: 1, reward: 0 },
-  { id: "sell_cargo", title: "卖出任意货物", hint: "打开市场，切换到出售，把刚采集的货物卖出。", target: 1, reward: 1200 }
+  { id: "station_briefing", title: "读取星港中枢", hint: "先确认你停靠在空间站。星港只是入口，市场、仓库、合约和情报都在不同模块里。", target: 1, reward: 0, track: "执照登记" },
+  { id: "open_market", title: "进入市场交易所", hint: "打开市场。注意：这里显示价格、库存和买卖盘，不会替你计算路线利润。", target: 1, reward: 0, track: "市场观察" },
+  { id: "undock", title: "离站出航", hint: "点击右上角“离站”，进入星系空间。货物、风险和距离会从这里开始变得真实。", target: 1, reward: 0, track: "飞行许可" },
+  { id: "mine_ore", title: "采集 3 单位资源", hint: "靠近矿石按住 E。采集到的矿石会进入飞船货舱，它是真实货物，不是抽象分数。", target: 3, reward: 0, track: "资源采集" },
+  { id: "dock_again", title: "返回空间站", hint: "飞回空间站附近按 E 停靠。只有抵达空间站，才能使用当地市场、仓库与制造。", target: 1, reward: 0, track: "停靠流程" },
+  { id: "sell_cargo", title: "卖出任意货物", hint: "打开市场并切换到出售。出售会增加当地市场库存，价格变化由供需自然产生。", target: 1, reward: 0, track: "本地交易" },
+  { id: "view_regional_quotes", title: "查看全星系行情", hint: "在市场下拉菜单切换到其他空间站，只看报价。真正买便宜货，仍需要亲自飞过去。", target: 1, reward: 0, track: "行情判断" },
+  { id: "open_hangar", title: "检查独立仓库", hint: "进入仓库货舱。每个空间站仓库独立，存货不会自动跨站传送。", target: 1, reward: 0, track: "资产归属" },
+  { id: "open_contracts", title: "查看自由合约", hint: "进入合约中心。主线只给方向，跑商、采矿、战斗和探索路线由你自己选择。", target: 1, reward: 1200, track: "自由职业" }
+];
+
+const STORY_CHAPTERS = [
+  {
+    id: "license",
+    title: "第一章：边境飞行员执照",
+    summary: "掌握停靠、采矿、本地交易、远程行情查看和独立仓库。剧情只解释世界规则，不操控市场价格。",
+    checks: ["licenseBasics", "firstSale", "regionalQuote"]
+  },
+  {
+    id: "contractor",
+    title: "第二章：独立承包人",
+    summary: "开始从公开合约里选择自己的职业方向。合约给奖励，但商品价格仍由真实供需决定。",
+    checks: ["contractReputation", "shipUpgrade", "systemVisited"]
+  },
+  {
+    id: "frontier",
+    title: "第三章：边境档案",
+    summary: "进入更高风险区域，收集情报、清理威胁或建立运输路线。主线只记录你的成长轨迹。",
+    checks: ["combatRecord", "intelRecord", "outpostRecord"]
+  }
 ];
 
 const CRAFTING_RECIPES = [
@@ -196,9 +220,11 @@ const defaultState = () => ({
   aiCount: 16,
   systemThreat: { aurora: 0, helios: 18, nyx: 42, vanta: 68 },
   discovered: ["aurora", "helios", "nyx"],
+  visitedSystems: ["aurora"],
   playSeconds: 0,
   marketMemory: {},
   stationStorage: {},
+  story: { viewedRemoteMarket: false },
   tutorial: { active: true, completed: false, step: 0, baselines: {}, enteredStep: null }
 });
 
@@ -396,6 +422,8 @@ function loadGame() {
       markets: saved.markets || {},
       marketMemory: saved.marketMemory || {},
       stationStorage: saved.stationStorage || {},
+      visitedSystems: saved.visitedSystems || base.visitedSystems,
+      story: { ...base.story, ...(saved.story || {}) },
       tutorial
     };
   } catch {
@@ -1679,6 +1707,8 @@ function jumpTo(systemId) {
   state.currentSystem = systemId;
   audioEngine.play("jump");
   if (!state.discovered.includes(systemId)) state.discovered.push(systemId);
+  if (!state.visitedSystems) state.visitedSystems = ["aurora"];
+  if (!state.visitedSystems.includes(systemId)) state.visitedSystems.push(systemId);
   selectedSystem = null;
   $("#mapPanel").classList.add("hidden");
   state.docked = false;
@@ -1847,12 +1877,15 @@ function ensureTutorialStepBaseline(step) {
 function tutorialProgress(step) {
   if (!step) return 0;
   const base = state.tutorial.baselines || {};
+  if (step.id === "station_briefing") return state.docked && $("#hubTab")?.classList.contains("active") ? 1 : 0;
   if (step.id === "open_market") return $("#marketTab")?.classList.contains("active") ? 1 : 0;
-  if (step.id === "buy_fuel") return (state.fuel > (base.fuel ?? state.fuel) || state.fuel >= state.maxFuel) ? 1 : 0;
   if (step.id === "undock") return state.docked ? 0 : 1;
   if (step.id === "mine_ore") return Math.max(0, state.stats.mined - (base.mined || 0));
   if (step.id === "dock_again") return state.docked ? 1 : 0;
   if (step.id === "sell_cargo") return state.stats.tradeRevenue > (base.tradeRevenue || 0) ? 1 : 0;
+  if (step.id === "view_regional_quotes") return $("#marketTab")?.classList.contains("active") && marketViewSystem() !== state.currentSystem ? 1 : 0;
+  if (step.id === "open_hangar") return $("#hangarTab")?.classList.contains("active") ? 1 : 0;
+  if (step.id === "open_contracts") return $("#contractsTab")?.classList.contains("active") ? 1 : 0;
   return 0;
 }
 
@@ -1861,8 +1894,8 @@ function completeTutorialStep(step) {
   if (step.reward) {
     state.credits += step.reward;
     flashWallet();
-    addFeed(`飞行学院结业奖励：${formatNumber(step.reward)} ISK。`);
-    toast(`飞行学院奖励 +${formatNumber(step.reward)} ISK`);
+    addFeed(`边境飞行员执照奖励：${formatNumber(step.reward)} ISK。`);
+    toast(`执照奖励 +${formatNumber(step.reward)} ISK`);
   }
   state.tutorial.step += 1;
   state.tutorial.enteredStep = null;
@@ -1870,8 +1903,9 @@ function completeTutorialStep(step) {
   if (state.tutorial.step >= TUTORIAL_STEPS.length) {
     state.tutorial.active = false;
     state.tutorial.completed = true;
-    addFeed("飞行学院基础训练完成，后续可自由选择跑商、采矿、战斗或探索路线。");
+    addFeed("边境飞行员执照已签发。后续可自由选择跑商、采矿、战斗或探索路线。");
   }
+  if (state.docked) renderStation();
   saveGame();
 }
 
@@ -1884,7 +1918,8 @@ function updateTutorial() {
   ensureTutorialStepBaseline(step);
   const progress = tutorialProgress(step);
   if (progress >= step.target) completeTutorialStep(step);
-  renderTutorial(currentTutorialStep(), progress);
+  const nextStep = currentTutorialStep();
+  renderTutorial(nextStep, nextStep === step ? progress : tutorialProgress(nextStep));
 }
 
 function renderTutorial(step, progress) {
@@ -1895,13 +1930,15 @@ function renderTutorial(step, progress) {
   if (done) return;
   const index = state.tutorial.step + 1;
   const pct = clamp(progress / step.target * 100, 0, 100);
-  $("#tutorialTitle").textContent = "飞行学院";
+  $("#tutorialTitle").textContent = settings.language === "en" ? "Pilot License" : "飞行员执照";
+  const label = settings.language === "en" ? "Frontier License" : "边境飞行员执照";
+  const reward = step.reward ? `${formatNumber(step.reward)} ISK` : (settings.language === "en" ? "Training" : "执照训练");
   $("#tutorialContent").innerHTML = `
-    <div class="tutorial-step-label"><span>核心循环训练</span><b>${index}/${TUTORIAL_STEPS.length}</b></div>
+    <div class="tutorial-step-label"><span>${label} · ${step.track || ""}</span><b>${index}/${TUTORIAL_STEPS.length}</b></div>
     <div class="tutorial-objective">${step.title}</div>
     <p class="tutorial-hint">${step.hint}</p>
     <div class="tutorial-progress"><i style="width:${pct}%"></i></div>
-    <div class="tutorial-reward"><span>${Math.floor(progress)} / ${step.target}</span><b>${step.reward ? `${formatNumber(step.reward)} ISK` : "基础训练"}</b></div>`;
+    <div class="tutorial-reward"><span>${Math.floor(progress)} / ${step.target}</span><b>${reward}</b></div>`;
 }
 
 function updateStationModeLabel(tabId) {
@@ -2506,7 +2543,104 @@ function renderUpgrades() {
   $$("[data-upgrade]").forEach(button => button.addEventListener("click", () => buyUpgrade(button.dataset.upgrade)));
 }
 
+function storyMetric(checkId) {
+  const upgradeLevel = Object.values(state.upgrades || {}).reduce((sum, value) => sum + value, 0);
+  const visitedCount = new Set(state.visitedSystems || ["aurora"]).size;
+  const metrics = {
+    licenseBasics: {
+      label: "完成执照训练",
+      current: state.tutorial?.completed ? TUTORIAL_STEPS.length : clamp(state.tutorial?.step || 0, 0, TUTORIAL_STEPS.length),
+      target: TUTORIAL_STEPS.length
+    },
+    firstSale: {
+      label: "完成一次真实销售",
+      current: state.stats.tradeRevenue > 0 ? 1 : 0,
+      target: 1
+    },
+    regionalQuote: {
+      label: "查看远程空间站行情",
+      current: state.story?.viewedRemoteMarket ? 1 : 0,
+      target: 1
+    },
+    contractReputation: {
+      label: "完成公开合约",
+      current: state.reputation,
+      target: 1
+    },
+    shipUpgrade: {
+      label: "安装任意舰船升级",
+      current: upgradeLevel,
+      target: 1
+    },
+    systemVisited: {
+      label: "实际访问 2 个星系",
+      current: visitedCount,
+      target: 2
+    },
+    combatRecord: {
+      label: "击毁敌对舰船",
+      current: state.stats.kills,
+      target: 1
+    },
+    intelRecord: {
+      label: "取得海盗情报",
+      current: state.stats.intel,
+      target: 1
+    },
+    outpostRecord: {
+      label: "清除海盗据点",
+      current: state.stats.outposts,
+      target: 1
+    }
+  };
+  return metrics[checkId] || { label: checkId, current: 0, target: 1 };
+}
+
+function activeStoryChapter() {
+  return STORY_CHAPTERS.find(chapter => chapter.checks.some(id => {
+    const metric = storyMetric(id);
+    return metric.current < metric.target;
+  })) || STORY_CHAPTERS[STORY_CHAPTERS.length - 1];
+}
+
+function renderStoryPanel() {
+  const panel = $("#storyPanel");
+  if (!panel) return;
+  const chapter = activeStoryChapter();
+  const metrics = chapter.checks.map(storyMetric);
+  const completeCount = metrics.filter(metric => metric.current >= metric.target).length;
+  const pct = clamp(completeCount / metrics.length * 100, 0, 100);
+  const allDone = STORY_CHAPTERS.every(item => item.checks.every(id => {
+    const metric = storyMetric(id);
+    return metric.current >= metric.target;
+  }));
+  panel.classList.toggle("completed", allDone);
+  const rule = settings.language === "en"
+    ? "Economy rule: story never forces prices. Prices move through stock, trades, production, loss and transport."
+    : "经济规则：剧情不直接改价。价格只由库存、交易、生产、损耗与运输自然推动。";
+  const title = settings.language === "en" && chapter.id === "license" ? "Chapter 1: Frontier Pilot License" : chapter.title;
+  const summary = settings.language === "en"
+    ? "This dossier gives direction only. It does not calculate profits or manipulate markets."
+    : chapter.summary;
+  panel.innerHTML = `
+    <div>
+      <span class="story-kicker">${settings.language === "en" ? "FRONTIER DOSSIER" : "边境档案"}</span>
+      <h3>${allDone ? (settings.language === "en" ? "Open Frontier" : "自由边境已开放") : title}</h3>
+      <p>${allDone ? (settings.language === "en" ? "You have proven the core loop. Continue as trader, miner, mercenary, explorer or industrialist." : "你已经打通核心循环。接下来可以作为商人、矿工、佣兵、探索者或制造商自由发展。") : summary}</p>
+      <span class="story-rule">${rule}</span>
+    </div>
+    <div class="story-objectives">
+      ${metrics.map(metric => {
+        const done = metric.current >= metric.target;
+        const value = `${formatNumber(Math.min(metric.current, metric.target))}/${formatNumber(metric.target)}`;
+        return `<div class="story-objective ${done ? "done" : ""}"><span>${metric.label}</span><b>${done ? "✓" : value}</b></div>`;
+      }).join("")}
+      <div class="story-meter"><i style="width:${pct}%"></i></div>
+    </div>`;
+}
+
 function renderContracts() {
+  renderStoryPanel();
   const available = CONTRACT_LIBRARY.filter(contract => contract.id !== state.mission?.id).slice(0, 5);
   $("#contractGrid").innerHTML = available.map(contract => `
     <article class="contract-card">
@@ -3355,6 +3489,10 @@ function setupEvents() {
   });
   $("#marketSystemSelect").addEventListener("change", event => {
     selectedMarketSystem = event.target.value;
+    if (selectedMarketSystem !== state.currentSystem) {
+      state.story = { ...(state.story || {}), viewedRemoteMarket: true };
+      saveGame();
+    }
     renderMarket();
   });
   $("#tradeQuantity").addEventListener("input", updateTradeTicket);
