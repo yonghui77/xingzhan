@@ -64,6 +64,27 @@ const CONTRACT_LIBRARY = [
 ];
 
 const AI_NAMES = ["北辰","弥赛亚","灰隼","折光","织梦者","零度航线","深蓝","白噪声","阿特拉斯","星尘","渡鸦","远望","长风","玻色子","天琴","暗潮","巡游者","琥珀","量子猫","逐日","回声","赫卡忒","白鲸","夜莺","漫游者","红移","静海","逐光","边界人","苍穹","鸢尾","引力井"];
+CONTRACT_LIBRARY.push(
+  { id: "recon_nyx", type: "探索", title: "边境航线侦察", description: "前往夜幕前哨完成一次停靠扫描，解锁当地风险报告。", destination: "nyx", visit: true, amount: 1, reward: 1700 },
+  { id: "outpost", type: "突袭", title: "海盗据点清除", description: "摧毁任意海盗据点，降低地区威胁并回收战利品。", metric: "outposts", amount: 1, reward: 4200 },
+  { id: "intel", type: "情报", title: "黑匣子数据回收", description: "通过战斗或据点残骸取得海盗情报数据。", metric: "intel", amount: 3, reward: 2400 }
+);
+
+const TUTORIAL_STEPS = [
+  { id: "open_market", title: "进入市场交易所", hint: "在星港中枢点击“市场交易所”，先熟悉买卖终端。", target: 1, reward: 0 },
+  { id: "buy_fuel", title: "补满跃迁燃料", hint: "在市场购买 1 单位跃迁燃料。燃料会自动装填到跃迁槽。", target: 1, reward: 0 },
+  { id: "undock", title: "离站出航", hint: "点击右上角“离站”，进入星系空间。", target: 1, reward: 0 },
+  { id: "mine_ore", title: "采集 3 单位资源", hint: "靠近矿石按住 E，先完成一次安全采矿。", target: 3, reward: 0 },
+  { id: "dock_again", title: "返回空间站", hint: "飞回空间站附近按 E 停靠，准备出售货物。", target: 1, reward: 0 },
+  { id: "sell_cargo", title: "卖出任意货物", hint: "打开市场，切换到出售，把刚采集的货物卖出。", target: 1, reward: 1200 }
+];
+
+const CRAFTING_RECIPES = [
+  { id: "ammo_pack", name: "导弹弹药补给", description: "将矿物和残骸加工成前线消耗品。", inputs: { ore: 3, salvage: 1 }, output: { item: "ammo", amount: 6 } },
+  { id: "jump_fuel", name: "跃迁燃料精炼", description: "压缩晶体能量，制造可装填燃料。", inputs: { ore: 2, crystal: 1 }, output: { item: "fuel", amount: 4 } },
+  { id: "phase_crystal", name: "相位晶体筛选", description: "从高纯矿物中筛选少量相位晶体。", inputs: { ore: 8, fuel: 1 }, output: { item: "crystal", amount: 1 } }
+];
+
 const AI_ROLES = {
   miner: { name: "矿工", color: "#ffc45c" },
   trader: { name: "商人", color: "#51e7a6" },
@@ -103,6 +124,7 @@ const DEFAULT_SETTINGS = {
   uiSize: "large",
   font: "sans",
   quality: "high",
+  depthFx: "standard",
   language: "zh",
   masterVolume: 65,
   musicEnabled: true,
@@ -174,7 +196,10 @@ const defaultState = () => ({
   aiCount: 16,
   systemThreat: { aurora: 0, helios: 18, nyx: 42, vanta: 68 },
   discovered: ["aurora", "helios", "nyx"],
-  playSeconds: 0
+  playSeconds: 0,
+  marketMemory: {},
+  stationStorage: {},
+  tutorial: { active: true, completed: false, step: 0, baselines: {}, enteredStep: null }
 });
 
 let state = loadGame();
@@ -192,6 +217,7 @@ let aiPilots = [];
 let aiTradeLog = [];
 let aiEconomyTimer = 0;
 let selectedMarketItem = "ore";
+let selectedMarketSystem = null;
 let marketSearchText = "";
 let shieldImpact = 0;
 let shieldHitAngle = 0;
@@ -357,13 +383,20 @@ function loadGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return defaultState();
     const saved = JSON.parse(raw);
+    const base = defaultState();
+    const tutorial = saved.tutorial
+      ? { ...base.tutorial, ...saved.tutorial, baselines: { ...(saved.tutorial.baselines || {}) } }
+      : (saved.playSeconds > 240 ? { ...base.tutorial, active: false, completed: true, step: TUTORIAL_STEPS.length } : base.tutorial);
     return {
-      ...defaultState(), ...saved,
-      upgrades: { ...defaultState().upgrades, ...(saved.upgrades || {}) },
-      stats: { ...defaultState().stats, ...(saved.stats || {}) },
-      systemThreat: { ...defaultState().systemThreat, ...(saved.systemThreat || {}) },
+      ...base, ...saved,
+      upgrades: { ...base.upgrades, ...(saved.upgrades || {}) },
+      stats: { ...base.stats, ...(saved.stats || {}) },
+      systemThreat: { ...base.systemThreat, ...(saved.systemThreat || {}) },
       cargo: saved.cargo || {},
-      markets: saved.markets || {}
+      markets: saved.markets || {},
+      marketMemory: saved.marketMemory || {},
+      stationStorage: saved.stationStorage || {},
+      tutorial
     };
   } catch {
     return defaultState();
@@ -452,6 +485,7 @@ function applyLanguage() {
     ["Interface Size", "Adjust the size of the HUD, market and help text."],
     ["Font Style", "Choose a readable or terminal-inspired typeface."],
     ["Graphics Quality", "Adjust particles, star density, glow and render resolution."],
+    ["3D Visuals", "Control hangar perspective, panel depth, star parallax and ship lighting."],
     ["Language", "Switch the primary game interface language."],
     ["Master Volume", "Controls the overall game volume."],
     ["Background Music", "Procedurally generated deep-space ambience."],
@@ -460,6 +494,7 @@ function applyLanguage() {
     ["界面字号", "调整HUD、市场和说明文字的大小。"],
     ["字体风格", "选择更适合阅读或更有科幻感的字体。"],
     ["画面质量", "调整粒子、星空密度、光晕效果和渲染分辨率。"],
+    ["3D视觉效果", "控制机库透视、面板层次、星空视差和舰船模型光影。"],
     ["语言", "切换游戏核心界面语言。"],
     ["主音量", "控制游戏的整体音量。"],
     ["背景音乐", "程序化生成的太空氛围音乐。"],
@@ -471,11 +506,12 @@ function applyLanguage() {
     row.querySelector(":scope > div:first-child span").textContent = settingCopy[index][1];
   });
   const labels = settings.language === "en"
-    ? { standard: "Standard", large: "Large", xlarge: "Extra Large", sans: "Clear", rounded: "Rounded", mono: "Terminal", low: "Performance", medium: "Balanced", high: "High" }
-    : { standard: "标准", large: "大号", xlarge: "特大", sans: "清晰", rounded: "圆润", mono: "终端", low: "流畅", medium: "均衡", high: "精细" };
+    ? { standard: "Standard", large: "Large", xlarge: "Extra Large", sans: "Clear", rounded: "Rounded", mono: "Terminal", low: "Performance", medium: "Balanced", high: "High", off: "Off", enhanced: "Enhanced" }
+    : { standard: "标准", large: "大号", xlarge: "特大", sans: "清晰", rounded: "圆润", mono: "终端", low: "流畅", medium: "均衡", high: "精细", off: "关闭", enhanced: "增强" };
   Object.entries(labels).forEach(([value, label]) => {
-    const button = $(`[data-ui-size-choice="${value}"],[data-font-choice="${value}"],[data-quality-choice="${value}"]`);
-    if (button) button.textContent = label;
+    $$(`[data-ui-size-choice="${value}"],[data-font-choice="${value}"],[data-quality-choice="${value}"],[data-depth-choice="${value}"]`).forEach(button => {
+      button.textContent = label;
+    });
   });
   $(".settings-preview>span").textContent = settings.language === "en" ? "Preview" : "预览";
   $(".settings-preview>strong").textContent = settings.language === "en" ? "Regional market prices are fluctuating" : "区域市场价格出现波动";
@@ -511,6 +547,7 @@ function applySettings() {
   applyTextSize(settings.uiSize);
   document.body.dataset.font = settings.font;
   document.body.dataset.quality = settings.quality;
+  document.body.dataset.depth = settings.depthFx;
   applyLanguage();
   audioEngine.applySettings();
   renderSettings();
@@ -522,6 +559,7 @@ function renderSettings() {
   $$("[data-ui-size-choice]").forEach(button => button.classList.toggle("active", button.dataset.uiSizeChoice === settings.uiSize));
   $$("[data-font-choice]").forEach(button => button.classList.toggle("active", button.dataset.fontChoice === settings.font));
   $$("[data-quality-choice]").forEach(button => button.classList.toggle("active", button.dataset.qualityChoice === settings.quality));
+  $$("[data-depth-choice]").forEach(button => button.classList.toggle("active", button.dataset.depthChoice === settings.depthFx));
   $$("[data-language-choice]").forEach(button => button.classList.toggle("active", button.dataset.languageChoice === settings.language));
   $("#masterVolume").value = settings.masterVolume;
   $("#musicVolume").value = settings.musicVolume;
@@ -556,6 +594,7 @@ function setSetting(key, value, previewSound = false) {
   if (key === "uiSize") applyTextSize(value);
   else if (key === "font") document.body.dataset.font = value;
   else if (key === "quality") applyGraphicsQuality(value);
+  else if (key === "depthFx") document.body.dataset.depth = value;
   else if (key === "language") applyLanguage();
   audioEngine.applySettings();
   renderSettings();
@@ -603,6 +642,75 @@ function removeCargo(key, amount) {
   return removed;
 }
 
+function stationStore(systemId = state.currentSystem) {
+  if (!state.stationStorage[systemId]) state.stationStorage[systemId] = {};
+  return state.stationStorage[systemId];
+}
+
+function addToStationStorage(key, amount, systemId = state.currentSystem) {
+  const store = stationStore(systemId);
+  store[key] = (store[key] || 0) + Math.max(0, amount);
+  if (store[key] <= 0) delete store[key];
+}
+
+function removeFromStationStorage(key, amount, systemId = state.currentSystem) {
+  const store = stationStore(systemId);
+  const removed = Math.min(amount, store[key] || 0);
+  store[key] = (store[key] || 0) - removed;
+  if (store[key] <= 0) delete store[key];
+  return removed;
+}
+
+function localItemAmount(key, systemId = state.currentSystem) {
+  return (state.cargo[key] || 0) + (stationStore(systemId)[key] || 0);
+}
+
+function removeLocalItems(key, amount, systemId = state.currentSystem) {
+  let remaining = amount;
+  const fromCargo = removeCargo(key, remaining);
+  remaining -= fromCargo;
+  if (remaining > 0) remaining -= removeFromStationStorage(key, remaining, systemId);
+  return amount - Math.max(0, remaining);
+}
+
+function depositCargo(key, amount = Infinity) {
+  const moved = removeCargo(key, Number.isFinite(amount) ? amount : (state.cargo[key] || 0));
+  if (moved <= 0) return toast("货舱没有可存入的物品");
+  addToStationStorage(key, moved);
+  toast(`已存入 ${localizedGood(key).name} × ${moved}`);
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function withdrawCargo(key, amount = Infinity) {
+  const available = stationStore()[key] || 0;
+  const requested = Number.isFinite(amount) ? amount : available;
+  const movable = Math.min(requested, cargoSpaceFor(key), available);
+  if (movable <= 0) return toast(cargoSpaceFor(key) <= 0 ? "货舱空间不足" : "仓库没有该物品");
+  removeFromStationStorage(key, movable);
+  addCargo(key, movable);
+  autoRefuel();
+  toast(`已取出 ${localizedGood(key).name} × ${movable}`);
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function craftItem(recipeId) {
+  const recipe = CRAFTING_RECIPES.find(item => item.id === recipeId);
+  if (!recipe) return;
+  const missing = Object.entries(recipe.inputs).find(([key, amount]) => localItemAmount(key) < amount);
+  if (missing) return toast(`材料不足：${localizedGood(missing[0]).name}`);
+  Object.entries(recipe.inputs).forEach(([key, amount]) => removeLocalItems(key, amount));
+  addToStationStorage(recipe.output.item, recipe.output.amount);
+  addFeed(`在 <b>${localizedSystem(state.currentSystem).station}</b> 制作 ${localizedGood(recipe.output.item).name} × ${recipe.output.amount}。`);
+  audioEngine.play("trade");
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
 function marketPrice(systemId, itemKey, side = "buy") {
   const market = state.markets[systemId][itemKey];
   const system = SYSTEMS[systemId];
@@ -610,6 +718,71 @@ function marketPrice(systemId, itemKey, side = "buy") {
   const scarcity = clamp((targetStock - market.stock) / targetStock, -.7, 1.3);
   const mid = GOODS[itemKey].base * market.priceFactor * (1 + scarcity * .35);
   return Math.max(3, Math.round(mid * (side === "buy" ? 1.045 : .955)));
+}
+
+function rememberCurrentMarket() {
+  const systemId = state.currentSystem;
+  state.marketMemory[systemId] = {
+    playSeconds: state.playSeconds,
+    prices: Object.fromEntries(Object.keys(GOODS).map(key => [key, {
+      buy: marketPrice(systemId, key, "buy"),
+      sell: marketPrice(systemId, key, "sell"),
+      stock: Math.floor(state.markets[systemId][key].stock)
+    }]))
+  };
+}
+
+function marketMemoryAge(memory) {
+  if (!memory) return settings.language === "en" ? "Unsynced" : "未同步";
+  const minutes = Math.max(0, Math.floor((state.playSeconds - (memory.playSeconds || 0)) / 60));
+  if (minutes <= 0) return settings.language === "en" ? "Live" : "刚同步";
+  return settings.language === "en" ? `${minutes}m ago` : `${minutes}分钟前`;
+}
+
+function marketPressure(systemId, itemKey, snapshot = null) {
+  const system = SYSTEMS[systemId];
+  const stock = snapshot?.stock ?? state.markets[systemId][itemKey].stock;
+  const ref = system.stock[itemKey] || 1;
+  const ratio = stock / ref;
+  const price = snapshot?.buy ?? marketPrice(systemId, itemKey, "buy");
+  const priceRatio = price / Math.max(1, GOODS[itemKey].base * system.modifiers[itemKey]);
+  const tags = [];
+  if (ratio < .42) tags.push(settings.language === "en" ? "shortage" : "库存紧张");
+  else if (ratio > 1.55) tags.push(settings.language === "en" ? "surplus" : "库存充裕");
+  if (priceRatio > 1.18) tags.push(settings.language === "en" ? "price high" : "价格高位");
+  else if (priceRatio < .9) tags.push(settings.language === "en" ? "price low" : "价格低位");
+  if ((state.systemThreat[systemId] || 0) > 55 && ["ammo", "fuel", "salvage"].includes(itemKey)) {
+    tags.push(settings.language === "en" ? "war demand" : "战事需求");
+  }
+  return tags;
+}
+
+function collectMarketSignals() {
+  const signals = [];
+  Object.keys(SYSTEMS).forEach(systemId => {
+    const memory = state.marketMemory[systemId];
+    const live = systemId === state.currentSystem;
+    if (!memory && !live) return;
+    Object.keys(GOODS).forEach(itemKey => {
+      const snapshot = live ? null : memory?.prices?.[itemKey];
+      if (!snapshot && !live) return;
+      const tags = marketPressure(systemId, itemKey, snapshot);
+      if (!tags.length) return;
+      signals.push({
+        systemId,
+        itemKey,
+        tags,
+        live,
+        age: live ? (settings.language === "en" ? "Live" : "实时") : marketMemoryAge(memory),
+        threat: state.systemThreat[systemId] || 0
+      });
+    });
+  });
+  return signals.sort((a, b) => {
+    const riskA = a.threat > 55 ? 1 : 0;
+    const riskB = b.threat > 55 ? 1 : 0;
+    return b.tags.length + riskB - (a.tags.length + riskA);
+  });
 }
 
 function simulateMarkets(intensity = 1) {
@@ -1521,17 +1694,18 @@ function buyItem(itemKey, requested) {
   const market = state.markets[state.currentSystem][itemKey];
   const price = marketPrice(state.currentSystem, itemKey, "buy");
   const amountByMoney = Math.floor(state.credits / (price * 1.025));
-  const amountByCargo = cargoSpaceFor(itemKey);
-  const amount = Math.max(0, Math.min(requested === "max" ? 9999 : requested, Math.floor(market.stock), amountByMoney, amountByCargo));
-  if (amount <= 0) return toast(amountByCargo <= 0 ? "货舱空间不足" : "资金或市场库存不足");
+  const amount = Math.max(0, Math.min(requested === "max" ? 9999 : requested, Math.floor(market.stock), amountByMoney));
+  if (amount <= 0) return toast("资金或市场库存不足");
   const gross = amount * price;
   const fee = Math.max(1, Math.round(gross * .025));
   state.credits -= gross + fee;
-  addCargo(itemKey, amount);
+  const loaded = addCargo(itemKey, amount);
+  const stored = amount - loaded;
+  if (stored > 0) addToStationStorage(itemKey, stored);
   market.stock -= amount;
   market.priceFactor = clamp(market.priceFactor * (1 + amount / (SYSTEMS[state.currentSystem].stock[itemKey] * 18)), .3, 3.5);
   autoRefuel();
-  addFeed(`购入 ${GOODS[itemKey].name} × ${amount}，支出 ${formatNumber(gross + fee)} ISK。`);
+  addFeed(`购入 ${GOODS[itemKey].name} × ${amount}，支出 ${formatNumber(gross + fee)} ISK。${stored ? ` ${stored} 单位已送入本站仓库。` : ""}`);
   flashWallet();
   audioEngine.play("trade");
   renderStation();
@@ -1540,14 +1714,14 @@ function buyItem(itemKey, requested) {
 }
 
 function sellItem(itemKey, requested) {
-  const owned = state.cargo[itemKey] || 0;
+  const owned = localItemAmount(itemKey);
   const amount = Math.max(0, Math.min(requested === "max" ? owned : requested, owned));
-  if (amount <= 0) return toast("货舱中没有该商品");
+  if (amount <= 0) return toast("本地没有该商品");
   const market = state.markets[state.currentSystem][itemKey];
   const price = marketPrice(state.currentSystem, itemKey, "sell");
   const gross = amount * price;
   const fee = Math.max(1, Math.round(gross * .025));
-  removeCargo(itemKey, amount);
+  removeLocalItems(itemKey, amount);
   state.credits += gross - fee;
   state.stats.tradeRevenue += gross - fee;
   market.stock += amount;
@@ -1597,6 +1771,7 @@ function buyUpgrade(key) {
 function acceptContract(contractId) {
   const template = CONTRACT_LIBRARY.find(contract => contract.id === contractId);
   const startValue =
+    template.metric ? (state.stats[template.metric] || 0) :
     template.id === "mine" ? state.stats.mined :
     template.id === "hunt" ? state.stats.kills :
     template.id === "trade" ? state.stats.tradeRevenue : 0;
@@ -1609,6 +1784,8 @@ function acceptContract(contractId) {
 
 function missionProgress(mission) {
   if (!mission) return 0;
+  if (mission.metric) return Math.min(mission.amount, (state.stats[mission.metric] || 0) - (mission.startValue || 0));
+  if (mission.visit) return state.docked && state.currentSystem === mission.destination ? mission.amount : 0;
   if (mission.id === "mine") return Math.min(mission.amount, state.stats.mined - (mission.startValue || 0));
   if (mission.id === "hunt") return Math.min(mission.amount, state.stats.kills - (mission.startValue || 0));
   if (mission.id === "trade") return Math.min(mission.amount, state.stats.tradeRevenue - (mission.startValue || 0));
@@ -1619,13 +1796,19 @@ function updateMission() {
   const mission = state.mission;
   if (!mission) return;
   mission.progress = missionProgress(mission);
-  if (["mine", "hunt", "trade"].includes(mission.id) && mission.progress >= mission.amount) completeMission();
+  if ((["mine", "hunt", "trade"].includes(mission.id) || mission.metric || mission.visit) && mission.progress >= mission.amount) completeMission();
   updateMissionHud();
 }
 
 function checkDeliveryMission() {
   const mission = state.mission;
-  if (!mission || !mission.item) return;
+  if (!mission) return;
+  if (mission.visit) {
+    mission.progress = missionProgress(mission);
+    if (mission.progress >= mission.amount) completeMission();
+    return;
+  }
+  if (!mission.item) return;
   mission.progress = missionProgress(mission);
   const correctDestination = !mission.destination || mission.destination === state.currentSystem;
   if (mission.progress >= mission.amount && correctDestination) {
@@ -1644,6 +1827,81 @@ function completeMission() {
   state.mission = null;
   updateHud();
   saveGame();
+}
+
+function currentTutorialStep() {
+  if (!state.tutorial || state.tutorial.completed || !state.tutorial.active) return null;
+  return TUTORIAL_STEPS[state.tutorial.step] || null;
+}
+
+function ensureTutorialStepBaseline(step) {
+  if (!step || state.tutorial.enteredStep === step.id) return;
+  state.tutorial.enteredStep = step.id;
+  state.tutorial.baselines = {
+    fuel: state.fuel,
+    mined: state.stats.mined,
+    tradeRevenue: state.stats.tradeRevenue
+  };
+}
+
+function tutorialProgress(step) {
+  if (!step) return 0;
+  const base = state.tutorial.baselines || {};
+  if (step.id === "open_market") return $("#marketTab")?.classList.contains("active") ? 1 : 0;
+  if (step.id === "buy_fuel") return (state.fuel > (base.fuel ?? state.fuel) || state.fuel >= state.maxFuel) ? 1 : 0;
+  if (step.id === "undock") return state.docked ? 0 : 1;
+  if (step.id === "mine_ore") return Math.max(0, state.stats.mined - (base.mined || 0));
+  if (step.id === "dock_again") return state.docked ? 1 : 0;
+  if (step.id === "sell_cargo") return state.stats.tradeRevenue > (base.tradeRevenue || 0) ? 1 : 0;
+  return 0;
+}
+
+function completeTutorialStep(step) {
+  if (!step) return;
+  if (step.reward) {
+    state.credits += step.reward;
+    flashWallet();
+    addFeed(`飞行学院结业奖励：${formatNumber(step.reward)} ISK。`);
+    toast(`飞行学院奖励 +${formatNumber(step.reward)} ISK`);
+  }
+  state.tutorial.step += 1;
+  state.tutorial.enteredStep = null;
+  state.tutorial.baselines = {};
+  if (state.tutorial.step >= TUTORIAL_STEPS.length) {
+    state.tutorial.active = false;
+    state.tutorial.completed = true;
+    addFeed("飞行学院基础训练完成，后续可自由选择跑商、采矿、战斗或探索路线。");
+  }
+  saveGame();
+}
+
+function updateTutorial() {
+  const step = currentTutorialStep();
+  if (!step) {
+    renderTutorial(null, 0);
+    return;
+  }
+  ensureTutorialStepBaseline(step);
+  const progress = tutorialProgress(step);
+  if (progress >= step.target) completeTutorialStep(step);
+  renderTutorial(currentTutorialStep(), progress);
+}
+
+function renderTutorial(step, progress) {
+  const card = $("#tutorialCard");
+  if (!card) return;
+  const done = !step;
+  card.classList.toggle("completed", done);
+  if (done) return;
+  const index = state.tutorial.step + 1;
+  const pct = clamp(progress / step.target * 100, 0, 100);
+  $("#tutorialTitle").textContent = "飞行学院";
+  $("#tutorialContent").innerHTML = `
+    <div class="tutorial-step-label"><span>核心循环训练</span><b>${index}/${TUTORIAL_STEPS.length}</b></div>
+    <div class="tutorial-objective">${step.title}</div>
+    <p class="tutorial-hint">${step.hint}</p>
+    <div class="tutorial-progress"><i style="width:${pct}%"></i></div>
+    <div class="tutorial-reward"><span>${Math.floor(progress)} / ${step.target}</span><b>${step.reward ? `${formatNumber(step.reward)} ISK` : "基础训练"}</b></div>`;
 }
 
 function updateStationModeLabel(tabId) {
@@ -1695,11 +1953,13 @@ function openStation() {
   $("#stationPanel").classList.remove("hidden");
   $("#stationTitle").textContent = system.station;
   $("#stationTrait").textContent = system.trait;
+  selectedMarketSystem = state.currentSystem;
   activateStationTab("hub", { skipRender: true });
   renderStation();
 }
 
 function renderStation() {
+  if (state.docked) rememberCurrentMarket();
   renderHub();
   renderMarket();
   renderUpgrades();
@@ -1725,19 +1985,26 @@ function stationThreatText(value) {
   return "高危";
 }
 
-function bestTradeOpportunity() {
-  const current = state.currentSystem;
-  const opportunities = [];
-  Object.keys(GOODS).forEach(key => {
-    const localBuy = marketPrice(current, key, "buy");
-    Object.keys(SYSTEMS).forEach(systemId => {
-      if (systemId === current) return;
-      const remoteSell = marketPrice(systemId, key, "sell");
-      const margin = remoteSell - localBuy;
-      if (margin > 0) opportunities.push({ key, systemId, margin, pct: margin / localBuy * 100 });
-    });
-  });
-  return opportunities.sort((a, b) => b.pct - a.pct)[0] || null;
+function marketViewSystem() {
+  if (!selectedMarketSystem || !SYSTEMS[selectedMarketSystem]) selectedMarketSystem = state.currentSystem;
+  return selectedMarketSystem;
+}
+
+function canTradeViewedMarket() {
+  return state.docked && marketViewSystem() === state.currentSystem;
+}
+
+function renderMarketSystemPicker() {
+  const picker = $("#marketSystemSelect");
+  if (!picker) return;
+  const currentValue = marketViewSystem();
+  picker.innerHTML = Object.entries(SYSTEMS).map(([id]) => {
+    const label = localizedSystem(id).station;
+    const suffix = id === state.currentSystem ? (settings.language === "en" ? " · Docked" : " · 当前") : "";
+    return `<option value="${id}">${label}${suffix}</option>`;
+  }).join("");
+  picker.value = currentValue;
+  $("#marketSystemLabel").textContent = settings.language === "en" ? "Quote Station" : "行情站点";
 }
 
 function renderHub() {
@@ -1751,7 +2018,8 @@ function renderHub() {
   const threatValue = state.systemThreat[state.currentSystem] || 0;
   const scarce = Object.keys(GOODS).filter(key => state.markets[state.currentSystem][key].stock < system.stock[key] * .35).length;
   const activeContracts = CONTRACT_LIBRARY.filter(contract => contract.id !== state.mission?.id).length;
-  const best = bestTradeOpportunity();
+  const signals = collectMarketSignals();
+  const primarySignal = signals[0];
 
   $("#hubKicker").textContent = text.stationCommand;
   $("#hubHeadline").textContent = settings.language === "en" ? `Docked at ${label.station}` : `已停靠：${label.station}`;
@@ -1800,12 +2068,12 @@ function renderHub() {
     tag: "SEC"
   });
   news.push({
-    level: best && best.pct > 35 ? "warn" : "",
-    text: best
+    level: primarySignal ? "warn" : "",
+    text: primarySignal
       ? (settings.language === "en"
-        ? `${localizedGood(best.key).name} → ${localizedSystem(best.systemId).station} spread +${best.pct.toFixed(0)}%`
-        : `${localizedGood(best.key).name} → ${localizedSystem(best.systemId).station} 价差 +${best.pct.toFixed(0)}%`)
-      : (settings.language === "en" ? "No strong arbitrage route detected" : "暂无明显套利路线"),
+        ? `${localizedSystem(primarySignal.systemId).station} · ${localizedGood(primarySignal.itemKey).name}: ${primarySignal.tags.join(" / ")}`
+        : `${localizedSystem(primarySignal.systemId).station} · ${localizedGood(primarySignal.itemKey).name}：${primarySignal.tags.join(" / ")}`)
+      : (settings.language === "en" ? "No unusual market pressure in synced stations" : "已同步市场暂无异常压力"),
     tag: "MKT"
   });
   news.push({
@@ -1835,6 +2103,12 @@ function renderMarket() {
   $("#marketSummary").textContent = settings.language === "en"
     ? (scarce ? `${scarce} product categories are in short supply` : "Market liquidity is normal")
     : (scarce ? `${scarce} 类商品供应紧张` : "市场流动性正常");
+  const localSignals = collectMarketSignals().filter(signal => signal.systemId === systemId);
+  $("#marketAdvisor").textContent = localSignals.length
+    ? (settings.language === "en"
+      ? `Local pressure: ${localSignals.slice(0, 2).map(signal => `${localizedGood(signal.itemKey).name} ${signal.tags[0]}`).join(" · ")}`
+      : `本站压力：${localSignals.slice(0, 2).map(signal => `${localizedGood(signal.itemKey).name}${signal.tags[0]}`).join(" · ")}`)
+    : (settings.language === "en" ? "No obvious local pressure · compare your market journal" : "本站暂无明显压力 · 可对照市场手账自行判断");
   const filtered = Object.entries(GOODS).filter(([key]) => {
     const item = localizedGood(key);
     return item.name.toLowerCase().includes(marketSearchText.toLowerCase()) || item.description.toLowerCase().includes(marketSearchText.toLowerCase());
@@ -1949,9 +2223,14 @@ function renderMarketSidebar() {
   $("#aiTradeFeed").innerHTML = aiTradeLog.slice(0, 7).map(entry => `
     <div class="ai-trade-row"><span><b>${entry.pilot}</b> ${entry.side === "buy" ? "买入" : "卖出"} ${GOODS[entry.item].name} ×${entry.amount}</span><b class="${entry.side === "sell" ? "sell" : ""}">${formatNumber(entry.price)}</b></div>
   `).join("") || `<div class="ai-trade-row"><span>等待玩家成交数据…</span><b>—</b></div>`;
-  $("#regionalPrices").innerHTML = Object.entries(SYSTEMS).map(([id, system]) => `
-    <div class="regional-row"><span>${system.station}</span><b>${formatNumber(marketPrice(id, selectedMarketItem, "sell"))}</b></div>
-  `).join("");
+  $("#regionalPrices").innerHTML = Object.entries(SYSTEMS).map(([id, system]) => {
+    const live = id === state.currentSystem;
+    const memory = state.marketMemory[id];
+    const snapshot = live ? { sell: marketPrice(id, selectedMarketItem, "sell") } : memory?.prices?.[selectedMarketItem];
+    const price = snapshot ? `${formatNumber(snapshot.sell)} ISK` : (settings.language === "en" ? "Unsynced" : "未同步");
+    const age = live ? (settings.language === "en" ? "Live" : "实时") : marketMemoryAge(memory);
+    return `<div class="regional-row"><span>${localizedSystem(id).station}<small>${age}</small></span><b>${price}</b></div>`;
+  }).join("");
 }
 
 function drawMarketChart(itemKey) {
@@ -1970,6 +2249,212 @@ function drawMarketChart(itemKey) {
   const history = [...state.markets[state.currentSystem][itemKey].history];
   while (history.length < 24) history.unshift(history[0] || GOODS[itemKey].base);
   history[history.length - 1] = marketPrice(state.currentSystem, itemKey);
+  const min = Math.min(...history) * .94;
+  const max = Math.max(...history) * 1.06;
+  c.clearRect(0, 0, width, height);
+  c.font = "7px ui-monospace, monospace";
+  c.fillStyle = "#52617b";
+  c.strokeStyle = "rgba(137,165,215,.09)";
+  for (let i = 0; i < 4; i++) {
+    const y = pad.t + (height - pad.t - pad.b) * i / 3;
+    c.beginPath(); c.moveTo(pad.l, y); c.lineTo(width - pad.r, y); c.stroke();
+    c.fillText(Math.round(max - (max - min) * i / 3), 2, y + 3);
+  }
+  const color = GOODS[itemKey].color;
+  const points = history.map((value, index) => ({
+    x: pad.l + (width - pad.l - pad.r) * index / (history.length - 1),
+    y: pad.t + (height - pad.t - pad.b) * (1 - (value - min) / Math.max(1, max - min))
+  }));
+  const gradient = c.createLinearGradient(0, pad.t, 0, height - pad.b);
+  gradient.addColorStop(0, `${color}35`);
+  gradient.addColorStop(1, `${color}00`);
+  c.beginPath();
+  points.forEach((point, index) => index ? c.lineTo(point.x, point.y) : c.moveTo(point.x, point.y));
+  c.lineTo(points[points.length - 1].x, height - pad.b);
+  c.lineTo(points[0].x, height - pad.b);
+  c.closePath();
+  c.fillStyle = gradient;
+  c.fill();
+  c.beginPath();
+  points.forEach((point, index) => index ? c.lineTo(point.x, point.y) : c.moveTo(point.x, point.y));
+  c.strokeStyle = color;
+  c.lineWidth = 1.7;
+  c.shadowColor = color;
+  c.shadowBlur = 7;
+  c.stroke();
+  c.shadowBlur = 0;
+}
+
+function renderMarketSystemPicker() {
+  const picker = $("#marketSystemSelect");
+  if (!picker) return;
+  const currentValue = marketViewSystem();
+  picker.innerHTML = Object.entries(SYSTEMS).map(([id]) => {
+    const label = localizedSystem(id).station;
+    const suffix = id === state.currentSystem ? (settings.language === "en" ? " · Docked" : " · 当前") : "";
+    return `<option value="${id}">${label}${suffix}</option>`;
+  }).join("");
+  picker.value = currentValue;
+  $("#marketSystemLabel").textContent = settings.language === "en" ? "Quote Station" : "行情站点";
+}
+
+function renderMarket() {
+  const systemId = marketViewSystem();
+  const system = SYSTEMS[systemId];
+  const market = state.markets[systemId];
+  const local = canTradeViewedMarket();
+  renderMarketSystemPicker();
+  const scarce = Object.keys(GOODS).filter(key => market[key].stock < system.stock[key] * .35).length;
+  $("#marketSummary").textContent = settings.language === "en"
+    ? `${localizedSystem(systemId).station} · ${local ? "local trading enabled" : "quote view only"}${scarce ? ` · ${scarce} scarce` : ""}`
+    : `${localizedSystem(systemId).station} · ${local ? "本地可交易" : "远程仅看行情"}${scarce ? ` · ${scarce}类紧缺` : ""}`;
+  const signals = collectMarketSignals().filter(signal => signal.systemId === systemId);
+  $("#marketAdvisor").textContent = signals.length
+    ? (settings.language === "en"
+      ? `Market pressure: ${signals.slice(0, 2).map(signal => `${localizedGood(signal.itemKey).name} ${signal.tags[0]}`).join(" · ")}`
+      : `市场压力：${signals.slice(0, 2).map(signal => `${localizedGood(signal.itemKey).name}${signal.tags[0]}`).join(" · ")}`)
+    : (settings.language === "en" ? "No obvious pressure · goods do not teleport between stations" : "暂无明显压力 · 物品不会在空间站之间瞬移");
+  const filtered = Object.entries(GOODS).filter(([key]) => {
+    const item = localizedGood(key);
+    return item.name.toLowerCase().includes(marketSearchText.toLowerCase()) || item.description.toLowerCase().includes(marketSearchText.toLowerCase());
+  });
+  $("#marketItemList").innerHTML = filtered.map(([key, item]) => {
+    const label = localizedGood(key);
+    const price = marketPrice(systemId, key, "buy");
+    const change = (price / item.base - 1) * 100;
+    const ownedLabel = local ? `${localItemAmount(key)}` : (settings.language === "en" ? "remote" : "远程");
+    return `
+      <button class="market-list-item ${selectedMarketItem === key ? "active" : ""}" data-market-item="${key}" style="--item-color:${item.color}">
+        <span class="market-list-icon">${item.icon}</span>
+        <span><strong>${label.name}</strong><small>${settings.language === "en" ? "Stock" : "库存"} ${Math.floor(market[key].stock)} · ${settings.language === "en" ? "Local owned" : "本地持有"} ${ownedLabel}</small></span>
+        <span class="market-list-price"><b>${formatNumber(price)}</b><span class="${change > 0 ? "up" : ""}">${change >= 0 ? "+" : ""}${change.toFixed(0)}%</span></span>
+      </button>`;
+  }).join("");
+  $$("[data-market-item]").forEach(button => button.addEventListener("click", () => {
+    selectedMarketItem = button.dataset.marketItem;
+    renderMarket();
+  }));
+  renderMarketDetail();
+}
+
+function renderMarketDetail() {
+  const systemId = marketViewSystem();
+  const itemKey = selectedMarketItem;
+  const item = GOODS[itemKey];
+  const label = localizedGood(itemKey);
+  const market = state.markets[systemId][itemKey];
+  const buyPrice = marketPrice(systemId, itemKey, "buy");
+  const sellPrice = marketPrice(systemId, itemKey, "sell");
+  const currentPrice = marketMode === "buy" ? buyPrice : sellPrice;
+  const change = (currentPrice / item.base - 1) * 100;
+  const local = canTradeViewedMarket();
+  const owned = local ? localItemAmount(itemKey) : 0;
+  const available = marketMode === "buy" ? Math.floor(market.stock) : owned;
+
+  $("#marketSelectedIcon").textContent = item.icon;
+  $("#marketSelectedIcon").style.setProperty("--selected-color", item.color);
+  $("#marketSelectedCategory").textContent = settings.language === "en"
+    ? (itemKey === "ore" || itemKey === "crystal" ? "Resources & Industry" : "Ship Supplies & Salvage")
+    : (itemKey === "ore" || itemKey === "crystal" ? "资源与工业原料" : "舰船补给与回收品");
+  $("#marketSelectedName").textContent = label.name;
+  $("#marketSelectedDescription").textContent = label.description;
+  $("#marketMidPrice").textContent = `${formatNumber(Math.round((buyPrice + sellPrice) / 2))} ISK`;
+  $("#marketPriceChange").textContent = `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
+  $("#marketPriceChange").className = change > 0 ? "up" : "";
+  $("#marketSpread").textContent = `${formatNumber(buyPrice - sellPrice)} ISK`;
+  $("#ticketModeLabel").textContent = local
+    ? (settings.language === "en" ? (marketMode === "buy" ? "Instant Buy" : "Instant Sell") : (marketMode === "buy" ? "立即购买" : "立即出售"))
+    : (settings.language === "en" ? "Quote Only" : "仅查看行情");
+  $("#ticketAvailable").textContent = local
+    ? (settings.language === "en" ? (marketMode === "buy" ? `Market Stock ${available}` : `Local Owned ${available}`) : (marketMode === "buy" ? `市场库存 ${available}` : `本地持有 ${available}`))
+    : (settings.language === "en" ? `Dock at ${localizedSystem(systemId).station} to trade` : `需前往 ${localizedSystem(systemId).station} 交易`);
+  $("#selectedOwned").textContent = settings.language === "en" ? `${localItemAmount(itemKey)} local units` : `${localItemAmount(itemKey)} 本地单位`;
+  $("#executeTradeBtn").textContent = local
+    ? (settings.language === "en" ? (marketMode === "buy" ? "Confirm Purchase" : "Confirm Sale") : (marketMode === "buy" ? "确认购买" : "确认出售"))
+    : (settings.language === "en" ? "Travel Required" : "需要前往该站");
+  $("#executeTradeBtn").classList.toggle("sell", marketMode === "sell");
+
+  const quantityInput = $("#tradeQuantity");
+  const maxAmount = Math.max(1, available);
+  quantityInput.max = maxAmount;
+  quantityInput.value = String(clamp(Number(quantityInput.value) || 1, 1, maxAmount));
+  updateTradeTicket();
+
+  const sellOrders = Array.from({ length: 6 }, (_, index) => {
+    const price = buyPrice + index * Math.max(1, Math.round(buyPrice * .012));
+    const amount = Math.max(1, Math.round(market.stock * (.035 + index * .013)));
+    return { price, amount };
+  }).reverse();
+  const buyOrders = Array.from({ length: 6 }, (_, index) => {
+    const price = sellPrice - index * Math.max(1, Math.round(sellPrice * .011));
+    const amount = Math.max(1, Math.round(SYSTEMS[systemId].stock[itemKey] * (.028 + index * .011)));
+    return { price: Math.max(1, price), amount };
+  });
+  renderOrderRows("#sellOrders", sellOrders, "sell");
+  renderOrderRows("#buyOrders", buyOrders, "buy");
+  renderMarketSidebar();
+  requestAnimationFrame(() => drawMarketChart(itemKey));
+}
+
+function updateTradeTicket() {
+  if (!GOODS[selectedMarketItem]) return;
+  const amount = Math.max(1, Number($("#tradeQuantity").value) || 1);
+  const systemId = marketViewSystem();
+  const price = marketPrice(systemId, selectedMarketItem, marketMode === "buy" ? "buy" : "sell");
+  const gross = amount * price;
+  const fee = Math.max(1, Math.round(gross * .025));
+  $("#tradeTotal").textContent = `${formatNumber(marketMode === "buy" ? gross + fee : gross - fee)} ISK`;
+  $("#tradeFee").textContent = canTradeViewedMarket()
+    ? (settings.language === "en" ? `Turnover ${formatNumber(gross)} · Tax ${formatNumber(fee)}` : `成交额 ${formatNumber(gross)} · 税费 ${formatNumber(fee)}`)
+    : (settings.language === "en" ? "Quote only · physical travel required" : "仅行情 · 需实体运输前往");
+  $("#executeTradeBtn").disabled = !canTradeViewedMarket();
+}
+
+function executeMarketTrade() {
+  if (!canTradeViewedMarket()) return toast("远程市场只能查看行情，必须驾驶战舰前往该空间站交易");
+  const amount = Math.max(1, Math.floor(Number($("#tradeQuantity").value) || 1));
+  if (marketMode === "buy") buyItem(selectedMarketItem, amount);
+  else sellItem(selectedMarketItem, amount);
+}
+
+function renderMarketSidebar() {
+  const stats = shipStats();
+  const usage = cargoUsed();
+  $("#marketCargoUsage").textContent = `${usage} / ${stats.cargo}`;
+  $("#marketCargoBar").style.width = `${clamp(usage / stats.cargo * 100, 0, 100)}%`;
+  const recentWindow = Date.now() - 60000;
+  $("#aiTradeRate").textContent = `${aiTradeLog.filter(entry => entry.time > recentWindow).length} ${settings.language === "en" ? "trades/min" : "笔/分"}`;
+  $("#aiTradeFeed").innerHTML = aiTradeLog.slice(0, 7).map(entry => `
+    <div class="ai-trade-row"><span><b>${entry.pilot}</b> ${entry.side === "buy" ? "买入" : "卖出"} ${localizedGood(entry.item).name} ×${entry.amount}</span><b class="${entry.side === "sell" ? "sell" : ""}">${formatNumber(entry.price)}</b></div>
+  `).join("") || `<div class="ai-trade-row"><span>${settings.language === "en" ? "Waiting for pilot trade data..." : "等待玩家成交数据…"}</span><b>—</b></div>`;
+  $("#regionalPrices").innerHTML = Object.entries(SYSTEMS).map(([id]) => {
+    const live = id === state.currentSystem;
+    const viewed = id === marketViewSystem();
+    const memory = state.marketMemory[id];
+    const snapshot = live ? { sell: marketPrice(id, selectedMarketItem, "sell") } : memory?.prices?.[selectedMarketItem];
+    const price = snapshot ? `${formatNumber(snapshot.sell)} ISK` : (settings.language === "en" ? "Unsynced" : "未同步");
+    const age = live ? (settings.language === "en" ? "Live" : "实时") : marketMemoryAge(memory);
+    return `<div class="regional-row ${viewed ? "active" : ""}"><span>${localizedSystem(id).station}<small>${age}</small></span><b>${price}</b></div>`;
+  }).join("");
+}
+
+function drawMarketChart(itemKey) {
+  const chart = $("#marketChart");
+  if (!chart) return;
+  const rect = chart.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const dpr = devicePixelRatio || 1;
+  chart.width = rect.width * dpr;
+  chart.height = rect.height * dpr;
+  const c = chart.getContext("2d");
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const width = rect.width;
+  const height = rect.height;
+  const pad = { l: 32, r: 8, t: 12, b: 20 };
+  const systemId = marketViewSystem();
+  const history = [...state.markets[systemId][itemKey].history];
+  while (history.length < 24) history.unshift(history[0] || GOODS[itemKey].base);
+  history[history.length - 1] = marketPrice(systemId, itemKey);
   const min = Math.min(...history) * .94;
   const max = Math.max(...history) * 1.06;
   c.clearRect(0, 0, width, height);
@@ -2064,21 +2549,97 @@ function renderHangar() {
     : "货物会随玩家移动，地区市场价格会根据库存、AI交易与敌对活动波动。";
 }
 
+function renderHangar() {
+  const stats = shipStats();
+  const used = cargoUsed();
+  const store = stationStore();
+  const cargoEntries = Object.entries(state.cargo).filter(([, amount]) => amount > 0);
+  const storageEntries = Object.entries(store).filter(([, amount]) => amount > 0);
+  const totalValue = [...cargoEntries, ...storageEntries].reduce((sum, [key, amount]) => sum + marketPrice(state.currentSystem, key, "sell") * amount, 0);
+  $("#hangarTitle").textContent = settings.language === "en" ? "Local Station Storage" : "本地仓库与货舱";
+  $("#shipCargoTitle").textContent = settings.language === "en" ? "Ship Cargo Hold" : "飞船货舱";
+  $("#stationStorageTitle").textContent = settings.language === "en" ? `${localizedSystem(state.currentSystem).station} Storage` : `${localizedSystem(state.currentSystem).station} 仓库`;
+  $("#craftingTitle").textContent = settings.language === "en" ? "Workshop" : "制作工坊";
+
+  const cargoCard = ([key, amount]) => {
+    const item = GOODS[key];
+    const label = localizedGood(key);
+    const unitValue = marketPrice(state.currentSystem, key, "sell");
+    return `
+      <article class="hangar-cargo-item" style="--item-color:${item.color}">
+        <i>${item.icon}</i>
+        <span><strong>${label.name}</strong><span>${settings.language === "en" ? "Local sell" : "本地卖出"} ${formatNumber(unitValue)} ISK · ${settings.language === "en" ? "Weight" : "重量"} ${item.weight}</span></span>
+        <b>× ${amount}</b>
+        <div class="hangar-actions"><button data-deposit-item="${key}">${settings.language === "en" ? "Store All" : "全部存入"}</button></div>
+      </article>`;
+  };
+  const storageCard = ([key, amount]) => {
+    const item = GOODS[key];
+    const label = localizedGood(key);
+    const room = cargoSpaceFor(key);
+    return `
+      <article class="hangar-cargo-item" style="--item-color:${item.color}">
+        <i>${item.icon}</i>
+        <span><strong>${label.name}</strong><span>${settings.language === "en" ? "Stored at this station" : "仅存放于当前空间站"} · ${settings.language === "en" ? "Can load" : "可装载"} ${room}</span></span>
+        <b>× ${amount}</b>
+        <div class="hangar-actions"><button data-withdraw-item="${key}" ${room <= 0 ? "disabled" : ""}>${settings.language === "en" ? "Load to Ship" : "装入飞船"}</button></div>
+      </article>`;
+  };
+  $("#hangarCargoGrid").innerHTML = cargoEntries.length
+    ? cargoEntries.map(cargoCard).join("")
+    : `<div class="hangar-empty">${settings.language === "en" ? "Ship cargo is empty." : "飞船货舱为空。"}</div>`;
+  $("#stationStorageGrid").innerHTML = storageEntries.length
+    ? storageEntries.map(storageCard).join("")
+    : `<div class="hangar-empty">${settings.language === "en" ? "This station storage is empty. Bought overflow and crafted goods stay here." : "本站仓库为空。货舱装不下的购买物和制作产物会留在这里。"}</div>`;
+
+  $("#craftingGrid").innerHTML = CRAFTING_RECIPES.map(recipe => {
+    const inputText = Object.entries(recipe.inputs).map(([key, amount]) => {
+      const enough = localItemAmount(key) >= amount;
+      return `<span class="${enough ? "" : "missing"}">${localizedGood(key).name} ${localItemAmount(key)}/${amount}</span>`;
+    }).join(" · ");
+    const canCraft = Object.entries(recipe.inputs).every(([key, amount]) => localItemAmount(key) >= amount);
+    return `
+      <article class="craft-card">
+        <h4>${recipe.name}</h4>
+        <p>${recipe.description}</p>
+        <div class="craft-recipe">${inputText}<br><b>→ ${localizedGood(recipe.output.item).name} × ${recipe.output.amount}</b></div>
+        <button data-craft-recipe="${recipe.id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Craft to Station Storage" : "制作到本站仓库"}</button>
+      </article>`;
+  }).join("");
+
+  $("#hangarUsageLabel").textContent = settings.language === "en" ? "Cargo Usage" : "货舱占用";
+  $("#hangarValueLabel").textContent = settings.language === "en" ? "Local Asset Estimate" : "本站资产估值";
+  $("#hangarCargoUsage").textContent = `${used} / ${stats.cargo}`;
+  $("#hangarCargoBar").style.width = `${clamp(used / stats.cargo * 100, 0, 100)}%`;
+  $("#hangarHoldValue").textContent = `${formatNumber(totalValue)} ISK`;
+  const shipRows = settings.language === "en"
+    ? [["Shield", `${Math.ceil(state.shield)} / ${stats.maxShield}`], ["Hull", `${Math.ceil(state.hull)} / ${stats.maxHull}`], ["Damage", Math.round(stats.damage)], ["Mining Rate", `${stats.miningRate.toFixed(1)}x`], ["Speed", Math.round(stats.speed)], ["Jump Fuel", `${state.fuel} / ${state.maxFuel}`]]
+    : [["护盾", `${Math.ceil(state.shield)} / ${stats.maxShield}`], ["装甲", `${Math.ceil(state.hull)} / ${stats.maxHull}`], ["火力", Math.round(stats.damage)], ["采矿效率", `${stats.miningRate.toFixed(1)}x`], ["速度", Math.round(stats.speed)], ["跃迁燃料", `${state.fuel} / ${state.maxFuel}`]];
+  $("#hangarShipStats").innerHTML = shipRows.map(([name, value]) => `<div><span>${name}</span><b>${value}</b></div>`).join("");
+  $("#hangarNotice").textContent = settings.language === "en"
+    ? "Items physically exist at their location. Station storage is local; moving goods requires loading them into your ship and flying there."
+    : "物品真实存在于所在地。空间站仓库彼此独立，搬运货物必须装入飞船并实际飞往目标站。";
+
+  $$("[data-deposit-item]").forEach(button => button.addEventListener("click", () => depositCargo(button.dataset.depositItem)));
+  $$("[data-withdraw-item]").forEach(button => button.addEventListener("click", () => withdrawCargo(button.dataset.withdrawItem)));
+  $$("[data-craft-recipe]").forEach(button => button.addEventListener("click", () => craftItem(button.dataset.craftRecipe)));
+}
+
 function renderIntel() {
   const current = state.currentSystem;
-  const opportunities = [];
-  Object.keys(GOODS).forEach(key => {
-    const localBuy = marketPrice(current, key, "buy");
-    Object.keys(SYSTEMS).forEach(systemId => {
-      if (systemId === current) return;
-      const remoteSell = marketPrice(systemId, key, "sell");
-      const margin = remoteSell - localBuy;
-      if (margin > 0) opportunities.push({ key, systemId, margin, pct: margin / localBuy * 100 });
-    });
-  });
-  opportunities.sort((a, b) => b.pct - a.pct);
-  $("#tradeIntel").innerHTML = `<div class="intel-list">${opportunities.slice(0, 6).map(item => `
-    <div class="intel-row"><span>${GOODS[item.key].name} → ${SYSTEMS[item.systemId].station}</span><b>+${item.pct.toFixed(0)}%</b></div>`).join("") || `<div class="intel-row"><span>暂无明显套利路线</span><b>—</b></div>`}</div>`;
+  const signals = collectMarketSignals();
+  const synced = Object.keys(SYSTEMS).filter(id => id === current || state.marketMemory[id]).length;
+  $("#marketSignals").innerHTML = signals.length ? `
+    <div class="market-signals-main">
+      <strong>${settings.language === "en" ? "Market Journal" : "市场手账"}</strong>
+      <span>${settings.language === "en" ? "Signals show pressure, not guaranteed profit. You decide what to haul." : "这里只显示市场压力，不直接给出利润答案；倒卖价值由玩家自行判断。"}</span>
+    </div>
+    <div class="market-signal-metric"><span>${settings.language === "en" ? "Synced Stations" : "已同步市场"}</span><b>${synced}/${Object.keys(SYSTEMS).length}</b></div>
+    <div class="market-signal-metric"><span>${settings.language === "en" ? "Pressure Signals" : "市场信号"}</span><b>${signals.length}</b></div>
+    <div class="market-signal-metric risk"><span>${settings.language === "en" ? "Route Risk" : "航线风险"}</span><b>${stationThreatText(state.systemThreat[current] || 0)}</b></div>
+  ` : `<div class="market-signals-empty">${settings.language === "en" ? "Dock at more stations to build a market journal." : "停靠更多空间站后，会逐步形成市场手账。"}</div>`;
+  $("#tradeIntel").innerHTML = `<div class="intel-list">${signals.slice(0, 8).map(signal => `
+    <div class="intel-row"><span>${localizedSystem(signal.systemId).station} · ${localizedGood(signal.itemKey).name} · ${signal.tags.join(" / ")} · ${signal.age}</span><b>${signal.live ? (settings.language === "en" ? "LIVE" : "实时") : (settings.language === "en" ? "LOG" : "手账")}</b></div>`).join("") || `<div class="intel-row"><span>${settings.language === "en" ? "No pressure signals in synced markets" : "已同步市场暂无压力信号"}</span><b>—</b></div>`}</div>`;
   $("#riskIntel").innerHTML = `<div class="intel-list">${SYSTEMS[current].links.map(id => {
     const system = SYSTEMS[id];
     return `<div class="intel-row"><span>${system.name} · ${system.securityText}</span><b class="${system.security < .5 ? "risk" : ""}">${system.risk}</b></div>`;
@@ -2118,6 +2679,7 @@ function updateHud() {
   updateAIPopulationHud();
   updateCargoHud();
   updateMissionHud();
+  updateTutorial();
 }
 
 function updateCargoHud() {
@@ -2237,20 +2799,35 @@ function drawBackground() {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, innerWidth, innerHeight);
 
+  const depthFactor = settings.depthFx === "off" ? .55 : settings.depthFx === "enhanced" ? 1.28 : 1;
+  const parallaxFactor = settings.depthFx === "off" ? .45 : settings.depthFx === "enhanced" ? 1.45 : 1;
   for (let layer = 0; layer < 3; layer++) {
     const qualityFactor = settings.quality === "low" ? .38 : settings.quality === "medium" ? .68 : 1;
-    const count = Math.round((70 + layer * 30) * qualityFactor);
-    const parallax = .03 + layer * .04;
+    const count = Math.round((70 + layer * 30) * qualityFactor * depthFactor);
+    const parallax = (.03 + layer * .04) * parallaxFactor;
     for (let i = 0; i < count; i++) {
       const seedX = ((i * 193 + layer * 71) % 997) / 997;
       const seedY = ((i * 389 + layer * 43) % 991) / 991;
       const x = ((seedX * innerWidth - camera.x * parallax) % innerWidth + innerWidth) % innerWidth;
       const y = ((seedY * innerHeight - camera.y * parallax) % innerHeight + innerHeight) % innerHeight;
-      ctx.globalAlpha = .22 + layer * .18;
+      ctx.globalAlpha = (.22 + layer * .18) * (settings.depthFx === "off" ? .72 : 1);
       ctx.fillStyle = i % 13 === 0 ? systemColor : "#d7e7ff";
       ctx.beginPath();
       ctx.arc(x, y, .45 + layer * .35, 0, Math.PI * 2);
       ctx.fill();
+    }
+  }
+  if (settings.depthFx !== "off" && settings.quality !== "low") {
+    const drift = performance.now() * .000025;
+    ctx.globalAlpha = settings.depthFx === "enhanced" ? .18 : .1;
+    ctx.strokeStyle = systemColor;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const x = ((innerWidth * (.18 + i * .32) - camera.x * (.012 + i * .006)) % innerWidth + innerWidth) % innerWidth;
+      const y = innerHeight * (.22 + i * .18) + Math.sin(drift * (i + 1) * 160) * 16;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 140 + i * 34, 26 + i * 7, drift * (i + 1), 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
   ctx.globalAlpha = 1;
@@ -2295,20 +2872,120 @@ function drawStation() {
 
 function drawPlayer() {
   const p = worldToScreen(player.x, player.y);
+  const depthMode = settings.depthFx || "standard";
+  const boosting = keys.shift && player.boostEnergy > 0;
+  const strafe = (keys.a || keys.arrowleft ? -1 : 0) + (keys.d || keys.arrowright ? 1 : 0);
+  const bank = depthMode === "off" ? 0 : strafe * .08;
+  const glow = depthMode === "enhanced" ? 1.35 : depthMode === "off" ? .55 : 1;
+
+  if (depthMode !== "off") {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(player.angle + Math.PI / 2);
+    ctx.fillStyle = `rgba(2,7,15,${.28 * glow})`;
+    ctx.beginPath();
+    ctx.ellipse(0, 18, 29, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   ctx.save();
   ctx.translate(p.x, p.y);
   ctx.rotate(player.angle + Math.PI / 2);
-  if (keys.shift && player.boostEnergy > 0) {
-    const flame = ctx.createLinearGradient(0, 15, 0, 45);
-    flame.addColorStop(0, "#d9fbff"); flame.addColorStop(.4, "#39ddff"); flame.addColorStop(1, "transparent");
+  if (bank) ctx.transform(1, bank, bank * .12, 1, 0, 0);
+
+  const enginePulse = .82 + Math.sin(performance.now() * .018) * .18;
+  const flameLength = boosting ? 43 + Math.random() * 12 : 16 + enginePulse * 7;
+  [-9, 9].forEach(offset => {
+    const flame = ctx.createLinearGradient(offset, 17, offset, 17 + flameLength);
+    flame.addColorStop(0, `rgba(238,253,255,${.96 * glow})`);
+    flame.addColorStop(.35, `rgba(57,221,255,${.72 * glow})`);
+    flame.addColorStop(1, "rgba(57,221,255,0)");
     ctx.fillStyle = flame;
-    ctx.beginPath(); ctx.moveTo(-6, 14); ctx.lineTo(0, 48 + Math.random() * 10); ctx.lineTo(6, 14); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(offset - 4, 16);
+    ctx.lineTo(offset, 17 + flameLength);
+    ctx.lineTo(offset + 4, 16);
+    ctx.closePath();
+    ctx.fill();
+  });
+  if (boosting && depthMode === "enhanced") {
+    ctx.globalAlpha = .32;
+    ctx.strokeStyle = "#39ddff";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-18, 16); ctx.lineTo(-30, 44);
+    ctx.moveTo(18, 16); ctx.lineTo(30, 44);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
-  ctx.shadowColor = "#39ddff"; ctx.shadowBlur = 18;
-  ctx.fillStyle = "#c6f5ff";
-  ctx.beginPath(); ctx.moveTo(0, -24); ctx.lineTo(14, 17); ctx.lineTo(0, 11); ctx.lineTo(-14, 17); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#1b3b5a";
-  ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(6, 10); ctx.lineTo(-6, 10); ctx.closePath(); ctx.fill();
+
+  ctx.shadowColor = "#39ddff";
+  ctx.shadowBlur = 16 * glow;
+  const wingGradient = ctx.createLinearGradient(-34, -4, 34, 28);
+  wingGradient.addColorStop(0, "#4b6888");
+  wingGradient.addColorStop(.45, "#21354f");
+  wingGradient.addColorStop(1, "#080f1c");
+  ctx.fillStyle = wingGradient;
+  ctx.beginPath();
+  ctx.moveTo(-8, -5); ctx.lineTo(-35, 12); ctx.lineTo(-29, 30); ctx.lineTo(-4, 18); ctx.closePath();
+  ctx.moveTo(8, -5); ctx.lineTo(35, 12); ctx.lineTo(29, 30); ctx.lineTo(4, 18); ctx.closePath();
+  ctx.fill();
+
+  ctx.shadowBlur = 10 * glow;
+  const podGradient = ctx.createLinearGradient(-16, 6, 16, 28);
+  podGradient.addColorStop(0, "#0b1322");
+  podGradient.addColorStop(.48, "#365671");
+  podGradient.addColorStop(1, "#09111f");
+  [-12, 12].forEach(offset => {
+    ctx.fillStyle = podGradient;
+    ctx.beginPath();
+    ctx.roundRect(offset - 5, 5, 10, 22, 4);
+    ctx.fill();
+    ctx.fillStyle = `rgba(105,230,255,${.55 * glow})`;
+    ctx.beginPath(); ctx.arc(offset, 25, 3.4, 0, Math.PI * 2); ctx.fill();
+  });
+
+  const hullGradient = ctx.createLinearGradient(-18, -31, 18, 30);
+  hullGradient.addColorStop(0, "#ecffff");
+  hullGradient.addColorStop(.2, "#88eaff");
+  hullGradient.addColorStop(.52, "#2f5877");
+  hullGradient.addColorStop(1, "#142238");
+  ctx.fillStyle = hullGradient;
+  ctx.beginPath();
+  ctx.moveTo(0, -33);
+  ctx.lineTo(15, -3);
+  ctx.lineTo(12, 23);
+  ctx.lineTo(4, 30);
+  ctx.lineTo(-4, 30);
+  ctx.lineTo(-12, 23);
+  ctx.lineTo(-15, -3);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(219,250,255,.36)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -25); ctx.lineTo(0, 27); ctx.stroke();
+  ctx.strokeStyle = "rgba(57,221,255,.22)";
+  ctx.beginPath(); ctx.moveTo(-10, -2); ctx.lineTo(10, -2); ctx.moveTo(-8, 16); ctx.lineTo(8, 16); ctx.stroke();
+
+  const cockpit = ctx.createRadialGradient(0, -10, 1, 0, -6, 12);
+  cockpit.addColorStop(0, "#f1ffff");
+  cockpit.addColorStop(.38, "#65e6ff");
+  cockpit.addColorStop(1, "#10223a");
+  ctx.fillStyle = cockpit;
+  ctx.beginPath();
+  ctx.moveTo(0, -22);
+  ctx.lineTo(8, -6);
+  ctx.lineTo(4, 8);
+  ctx.lineTo(-4, 8);
+  ctx.lineTo(-8, -6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = `rgba(147,239,255,${.8 * glow})`;
+  ctx.beginPath(); ctx.arc(0, -28, 2.6, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 0;
   ctx.restore();
   if (state.shield > 0) {
@@ -2317,12 +2994,18 @@ function drawPlayer() {
     ctx.translate(p.x, p.y);
     ctx.rotate(performance.now() * .00018);
     ctx.setLineDash([5, 5]);
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = depthMode === "enhanced" ? 1.55 : 1.2;
     ctx.strokeStyle = `rgba(57,221,255,${.12 + ratio * .18})`;
     ctx.beginPath(); ctx.arc(0, 0, 28, -.5, Math.PI * 1.42); ctx.stroke();
     ctx.rotate(-performance.now() * .00036);
     ctx.strokeStyle = `rgba(147,239,255,${.08 + ratio * .12})`;
     ctx.beginPath(); ctx.arc(0, 0, 33, 1.2, Math.PI * 2.15); ctx.stroke();
+    if (depthMode === "enhanced") {
+      ctx.globalAlpha = .06 + ratio * .06;
+      ctx.fillStyle = "#39ddff";
+      ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
     ctx.setLineDash([]);
     if (shieldImpact > 0) {
       ctx.rotate(shieldHitAngle - player.angle);
@@ -2618,9 +3301,17 @@ function setupEvents() {
   $("#helpBtn").addEventListener("click", () => { $("#helpPanel").classList.remove("hidden"); paused = true; });
   $("#closeHelpBtn").addEventListener("click", () => { $("#helpPanel").classList.add("hidden"); paused = state.docked; });
   $("#startBtn").addEventListener("click", () => { $("#helpPanel").classList.add("hidden"); if (state.docked) openStation(); });
+  $("#skipTutorialBtn").addEventListener("click", () => {
+    state.tutorial.active = false;
+    state.tutorial.completed = true;
+    state.tutorial.step = TUTORIAL_STEPS.length;
+    renderTutorial(null, 0);
+    saveGame();
+  });
   $$("[data-ui-size-choice]").forEach(button => button.addEventListener("click", () => setSetting("uiSize", button.dataset.uiSizeChoice)));
   $$("[data-font-choice]").forEach(button => button.addEventListener("click", () => setSetting("font", button.dataset.fontChoice)));
   $$("[data-quality-choice]").forEach(button => button.addEventListener("click", () => setSetting("quality", button.dataset.qualityChoice)));
+  $$("[data-depth-choice]").forEach(button => button.addEventListener("click", () => setSetting("depthFx", button.dataset.depthChoice)));
   $$("[data-language-choice]").forEach(button => button.addEventListener("click", () => setSetting("language", button.dataset.languageChoice)));
   $("#masterVolume").addEventListener("input", event => setSetting("masterVolume", Number(event.target.value)));
   $("#musicVolume").addEventListener("input", event => setSetting("musicVolume", Number(event.target.value)));
@@ -2662,11 +3353,15 @@ function setupEvents() {
     marketSearchText = event.target.value.trim();
     renderMarket();
   });
+  $("#marketSystemSelect").addEventListener("change", event => {
+    selectedMarketSystem = event.target.value;
+    renderMarket();
+  });
   $("#tradeQuantity").addEventListener("input", updateTradeTicket);
   $$(".quantity-presets button").forEach(button => button.addEventListener("click", () => {
     const available = marketMode === "buy"
-      ? Math.floor(state.markets[state.currentSystem][selectedMarketItem].stock)
-      : state.cargo[selectedMarketItem] || 0;
+      ? Math.floor(state.markets[marketViewSystem()][selectedMarketItem].stock)
+      : (canTradeViewedMarket() ? localItemAmount(selectedMarketItem) : 0);
     $("#tradeQuantity").value = button.dataset.qty === "max" ? Math.max(1, available) : button.dataset.qty;
     updateTradeTicket();
   }));
@@ -2727,7 +3422,8 @@ window.__game = {
   destroyOutpost,
   spawnPirateOutpost,
   resetSave() { localStorage.removeItem(SAVE_KEY); location.reload(); },
-  simulateMarkets
+  simulateMarkets,
+  renderStation
 };
 
 init();

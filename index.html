@@ -51,6 +51,11 @@
         </div>
       </section>
 
+      <section id="tutorialCard" class="hud-card tutorial-card">
+        <div class="card-title"><div><p>FLIGHT ACADEMY</p><strong id="tutorialTitle">飞行学院</strong></div><button id="skipTutorialBtn" class="mini-btn">跳过</button></div>
+        <div id="tutorialContent"></div>
+      </section>
+
       <section class="hud-card mission-card">
         <div class="card-title"><div><p>ACTIVE CONTRACT</p><strong>当前合约</strong></div><button id="cycleMissionBtn" class="mini-btn">换</button></div>
         <div id="missionContent"></div>
@@ -131,7 +136,7 @@
                 <div class="station-ring ring-b"></div>
                 <div class="hangar-gate"></div>
                 <div class="docked-ship">
-                  <i class="ship-nose"></i><i class="ship-core"></i><i class="ship-wing left"></i><i class="ship-wing right"></i>
+                  <i class="ship-keel"></i><i class="ship-nose"></i><i class="ship-core"></i><i class="ship-spine"></i><i class="ship-cockpit"></i><i class="ship-wing left"></i><i class="ship-wing right"></i><i class="ship-engine left"></i><i class="ship-engine right"></i>
                 </div>
                 <div class="dock-beam"></div>
               </div>
@@ -177,8 +182,11 @@
         </div>
         <div id="marketTab" class="station-tab">
           <div class="market-toolbar">
-            <div><p>区域独立库存 · 实物必须运输 · AI玩家实时成交</p><strong id="marketSummary">市场运行正常</strong></div>
-            <div class="market-mode"><button class="active" data-market-mode="buy">购买</button><button data-market-mode="sell">出售</button></div>
+            <div><p>区域独立库存 · 实物必须运输 · AI玩家实时成交</p><strong id="marketSummary">市场运行正常</strong><em id="marketAdvisor">市场情报同步中...</em></div>
+            <div class="market-controls">
+              <label class="market-system-picker"><span id="marketSystemLabel">行情站点</span><select id="marketSystemSelect"></select></label>
+              <div class="market-mode"><button class="active" data-market-mode="buy">购买</button><button data-market-mode="sell">出售</button></div>
+            </div>
           </div>
           <div class="market-terminal">
             <aside class="market-browser">
@@ -248,7 +256,12 @@
             <section class="hangar-card manifest-card">
               <p>CARGO MANIFEST</p>
               <h2 id="hangarTitle">仓库与货舱</h2>
+              <h3 id="shipCargoTitle" class="hangar-subtitle">飞船货舱</h3>
               <div id="hangarCargoGrid" class="hangar-cargo-grid"></div>
+              <h3 id="stationStorageTitle" class="hangar-subtitle">本站仓库</h3>
+              <div id="stationStorageGrid" class="hangar-cargo-grid"></div>
+              <h3 id="craftingTitle" class="hangar-subtitle">制作工坊</h3>
+              <div id="craftingGrid" class="crafting-grid"></div>
             </section>
             <aside class="hangar-side">
               <section class="hangar-card">
@@ -269,6 +282,7 @@
           </div>
         </div>
         <div id="intelTab" class="station-tab">
+          <div id="marketSignals" class="market-signals"></div>
           <div class="intel-grid">
             <article><p>MARKET INTEL</p><h2>地区价差</h2><div id="tradeIntel"></div></article>
             <article><p>SECURITY REPORT</p><h2>航线风险</h2><div id="riskIntel"></div></article>
@@ -351,6 +365,18 @@
 
           <section class="setting-row">
             <div>
+              <strong>3D视觉效果</strong>
+              <span>控制机库透视、面板层次、星空视差和舰船模型光影。</span>
+            </div>
+            <div class="segmented-control" id="depthOptions">
+              <button data-depth-choice="off">关闭</button>
+              <button data-depth-choice="standard">标准</button>
+              <button data-depth-choice="enhanced">增强</button>
+            </div>
+          </section>
+
+          <section class="setting-row">
+            <div>
               <strong>语言</strong>
               <span>切换游戏核心界面语言。</span>
             </div>
@@ -406,7 +432,7 @@
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">STARPORT HUB · BUILD 0.32</div>
+    <div class="version">2.5D SHIP MODEL · BUILD 0.34</div>
   </div>
   <script src="game.js"></script>
 </body>
