@@ -86,8 +86,8 @@ const STORY_CHAPTERS = [
   {
     id: "license",
     title: "第一章：边境飞行员执照",
-    summary: "掌握停靠、采矿、本地交易、远程行情查看和独立仓库。剧情只解释世界规则，不操控市场价格。",
-    checks: ["licenseBasics", "firstSale", "regionalQuote"]
+    summary: "完成一次真实的新人循环：停靠、出航采集、把货物运回本地市场出售，再学会查看远程行情。剧情只解释世界规则，不操控市场价格。",
+    checks: ["dockedOnce", "firstMining", "firstSale", "regionalQuote"]
   },
   {
     id: "contractor",
@@ -224,7 +224,7 @@ const defaultState = () => ({
   playSeconds: 0,
   marketMemory: {},
   stationStorage: {},
-  story: { viewedRemoteMarket: false },
+  story: { dockedOnce: true, viewedRemoteMarket: false },
   tutorial: { active: true, completed: false, step: 0, baselines: {}, enteredStep: null }
 });
 
@@ -1668,6 +1668,7 @@ function mineAsteroid(asteroid, dt) {
 
 function dock() {
   state.docked = true;
+  state.story = { ...(state.story || {}), dockedOnce: true };
   paused = true;
   player.vx = player.vy = 0;
   pve.heat = Math.max(0, pve.heat - 20);
@@ -1985,8 +1986,17 @@ function openHubModule(module) {
   activateStationTab(module);
 }
 
+function handleStoryAction(action) {
+  if (!action) return;
+  if (action === "undock") return state.docked ? undock() : toast("已在星系空间，寻找矿石、敌对势力或航线目标");
+  if (action === "map") return openMap();
+  if (action === "hub") return activateStationTab("hub");
+  if (["market", "shipyard", "contracts", "hangar", "intel"].includes(action)) return activateStationTab(action);
+}
+
 function openStation() {
   const system = SYSTEMS[state.currentSystem];
+  state.story = { ...(state.story || {}), dockedOnce: true };
   $("#stationPanel").classList.remove("hidden");
   $("#stationTitle").textContent = system.station;
   $("#stationTrait").textContent = system.trait;
@@ -2057,6 +2067,7 @@ function renderHub() {
   const activeContracts = CONTRACT_LIBRARY.filter(contract => contract.id !== state.mission?.id).length;
   const signals = collectMarketSignals();
   const primarySignal = signals[0];
+  const storyFocus = currentStoryFocus();
 
   $("#hubKicker").textContent = text.stationCommand;
   $("#hubHeadline").textContent = settings.language === "en" ? `Docked at ${label.station}` : `已停靠：${label.station}`;
@@ -2098,6 +2109,21 @@ function renderHub() {
     if (statusNode) statusNode.textContent = status;
   });
 
+  const storyPulse = $("#hubStoryPulse");
+  if (storyPulse) {
+    const nextText = storyFocus.allDone
+      ? (settings.language === "en" ? "Open frontier: choose your own profession." : "自由边境已开放：现在由你决定职业路线。")
+      : storyFocus.next.guidance;
+    storyPulse.innerHTML = `
+      <div>
+        <span>${settings.language === "en" ? "MAIN THREAD" : "主线信标"}</span>
+        <strong>${storyTitle(storyFocus.chapter, storyFocus.allDone)}</strong>
+        <p>${storyFocus.allDone ? storySummary(storyFocus.chapter, true) : `${storyFocus.next.label} · ${nextText}`}</p>
+      </div>
+      <button data-story-action="${storyFocus.next.action}" ${storyFocus.allDone ? "disabled" : ""}>${storyFocus.allDone ? (settings.language === "en" ? "Open" : "已开放") : storyFocus.next.actionLabel}</button>
+      <i style="width:${storyFocus.pct}%"></i>`;
+  }
+
   const news = [];
   news.push({
     level: threatValue >= 65 ? "danger" : threatValue >= 35 ? "warn" : "",
@@ -2119,6 +2145,13 @@ function renderHub() {
       ? (settings.language === "en" ? `Active contract: ${state.mission.title}` : `当前合约：${state.mission.title}`)
       : (settings.language === "en" ? "Contract hall has open work orders" : "任务大厅有可领取合约"),
     tag: "JOB"
+  });
+  news.push({
+    level: storyFocus.allDone ? "" : "warn",
+    text: storyFocus.allDone
+      ? (settings.language === "en" ? "Main thread no longer constrains play: free career development" : "主线不再约束玩法：自由职业发展已开放")
+      : (settings.language === "en" ? `Main thread: ${storyFocus.next.label}` : `主线下一步：${storyFocus.next.label}`),
+    tag: "MAIN"
   });
   news.push({
     level: "",
@@ -2544,98 +2577,172 @@ function renderUpgrades() {
 }
 
 function storyMetric(checkId) {
+  const isEn = settings.language === "en";
   const upgradeLevel = Object.values(state.upgrades || {}).reduce((sum, value) => sum + value, 0);
   const visitedCount = new Set(state.visitedSystems || ["aurora"]).size;
+  const dockedOnce = !!(state.story?.dockedOnce || state.docked);
   const metrics = {
-    licenseBasics: {
-      label: "完成执照训练",
-      current: state.tutorial?.completed ? TUTORIAL_STEPS.length : clamp(state.tutorial?.step || 0, 0, TUTORIAL_STEPS.length),
-      target: TUTORIAL_STEPS.length
+    dockedOnce: {
+      label: isEn ? "Dock at any station" : "完成一次空间站停靠",
+      current: dockedOnce ? 1 : 0,
+      target: 1,
+      action: "hub",
+      actionLabel: isEn ? "Open hub" : "查看中枢",
+      guidance: isEn ? "The station is a concourse, not the market itself." : "空间站是入口，市场、仓库、改装和情报是不同模块。"
+    },
+    firstMining: {
+      label: isEn ? "Mine 3 units of resources" : "采集 3 单位资源",
+      current: state.stats.mined,
+      target: 3,
+      action: "undock",
+      actionLabel: isEn ? "Undock to mine" : "离站采矿",
+      guidance: isEn ? "Resources enter your ship cargo as real items." : "采集物会进入飞船货舱，属于真实物品。"
     },
     firstSale: {
-      label: "完成一次真实销售",
+      label: isEn ? "Sell any carried goods locally" : "在本地市场卖出货物",
       current: state.stats.tradeRevenue > 0 ? 1 : 0,
-      target: 1
+      target: 1,
+      action: "market",
+      actionLabel: isEn ? "Open market" : "打开市场",
+      guidance: isEn ? "Selling adds stock to this station and moves price through supply." : "出售会增加本站库存，价格只由供需变化推动。"
     },
     regionalQuote: {
-      label: "查看远程空间站行情",
+      label: isEn ? "Inspect another station quote" : "查看其他空间站行情",
       current: state.story?.viewedRemoteMarket ? 1 : 0,
-      target: 1
+      target: 1,
+      action: "market",
+      actionLabel: isEn ? "Quote browser" : "查看行情",
+      guidance: isEn ? "Remote quotes are read-only. To buy, fly there." : "远程行情只读；要买便宜货，必须驾驶战舰前往当地。"
     },
     contractReputation: {
-      label: "完成公开合约",
+      label: isEn ? "Complete one public contract" : "完成 1 个公开合约",
       current: state.reputation,
-      target: 1
+      target: 1,
+      action: "contracts",
+      actionLabel: isEn ? "Contract hall" : "查看合约",
+      guidance: isEn ? "Contracts are optional work orders, not market control." : "合约只是可选工作订单，不会直接操控市场价格。"
     },
     shipUpgrade: {
-      label: "安装任意舰船升级",
+      label: isEn ? "Install any ship upgrade" : "安装任意舰船升级",
       current: upgradeLevel,
-      target: 1
+      target: 1,
+      action: "shipyard",
+      actionLabel: isEn ? "Ship fitting" : "舰船改装",
+      guidance: isEn ? "Upgrade the ship to support your chosen profession." : "改装舰船，用来支撑你选择的职业路线。"
     },
     systemVisited: {
-      label: "实际访问 2 个星系",
+      label: isEn ? "Physically visit 2 systems" : "实际访问 2 个星系",
       current: visitedCount,
-      target: 2
+      target: 2,
+      action: "map",
+      actionLabel: isEn ? "Star map" : "打开星图",
+      guidance: isEn ? "Prices differ because distance and transport matter." : "不同市场之间有距离，价格差需要真实运输来兑现。"
     },
     combatRecord: {
-      label: "击毁敌对舰船",
+      label: isEn ? "Destroy one hostile ship" : "击毁 1 艘敌对舰船",
       current: state.stats.kills,
-      target: 1
+      target: 1,
+      action: "undock",
+      actionLabel: isEn ? "Undock" : "离站出航",
+      guidance: isEn ? "Combat creates risk, loot and demand without forcing prices." : "战斗带来风险、战利品和消耗，但不直接改价。"
     },
     intelRecord: {
-      label: "取得海盗情报",
+      label: isEn ? "Recover pirate intel" : "取得 1 份海盗情报",
       current: state.stats.intel,
-      target: 1
+      target: 1,
+      action: "undock",
+      actionLabel: isEn ? "Hunt intel" : "寻找情报",
+      guidance: isEn ? "Intel comes from combat and outpost activity." : "情报来自战斗和据点活动。"
     },
     outpostRecord: {
-      label: "清除海盗据点",
+      label: isEn ? "Clear one pirate outpost" : "清除 1 个海盗据点",
       current: state.stats.outposts,
-      target: 1
+      target: 1,
+      action: "map",
+      actionLabel: isEn ? "Risk map" : "查看星图",
+      guidance: isEn ? "High-risk systems are more likely to expose outposts." : "高风险星系更容易出现海盗据点。"
     }
   };
-  return metrics[checkId] || { label: checkId, current: 0, target: 1 };
+  return { id: checkId, ...(metrics[checkId] || { label: checkId, current: 0, target: 1, action: "contracts", actionLabel: isEn ? "Open" : "查看", guidance: "" }) };
+}
+
+function chapterMetrics(chapter) {
+  return chapter.checks.map(storyMetric);
+}
+
+function chapterDone(chapter) {
+  return chapterMetrics(chapter).every(metric => metric.current >= metric.target);
 }
 
 function activeStoryChapter() {
-  return STORY_CHAPTERS.find(chapter => chapter.checks.some(id => {
-    const metric = storyMetric(id);
-    return metric.current < metric.target;
-  })) || STORY_CHAPTERS[STORY_CHAPTERS.length - 1];
+  return STORY_CHAPTERS.find(chapter => !chapterDone(chapter)) || STORY_CHAPTERS[STORY_CHAPTERS.length - 1];
+}
+
+function currentStoryFocus() {
+  const chapter = activeStoryChapter();
+  const metrics = chapterMetrics(chapter);
+  const next = metrics.find(metric => metric.current < metric.target) || metrics[metrics.length - 1];
+  const completeCount = metrics.filter(metric => metric.current >= metric.target).length;
+  const allDone = STORY_CHAPTERS.every(chapterDone);
+  return {
+    chapter,
+    metrics,
+    next,
+    allDone,
+    pct: clamp(completeCount / metrics.length * 100, 0, 100)
+  };
+}
+
+function storyTitle(chapter, allDone) {
+  if (allDone) return settings.language === "en" ? "Open Frontier" : "自由边境已开放";
+  if (settings.language !== "en") return chapter.title;
+  const titles = {
+    license: "Chapter 1: Frontier Pilot License",
+    contractor: "Chapter 2: Independent Contractor",
+    frontier: "Chapter 3: Frontier Dossier"
+  };
+  return titles[chapter.id] || chapter.title;
+}
+
+function storySummary(chapter, allDone) {
+  if (allDone) {
+    return settings.language === "en"
+      ? "You have proven the core loop. Continue as trader, miner, mercenary, explorer or industrialist."
+      : "你已经打通核心循环。接下来可以作为商人、矿工、佣兵、探索者或制造商自由发展。";
+  }
+  if (settings.language !== "en") return chapter.summary;
+  return "This dossier gives direction only. It does not calculate profits or manipulate markets.";
+}
+
+function storyRuleText() {
+  return settings.language === "en"
+    ? "Economy rule: story never forces prices. Prices move through stock, trades, production, loss and transport."
+    : "经济规则：剧情不直接改价。价格只由库存、交易、生产、损耗与运输自然推动。";
 }
 
 function renderStoryPanel() {
   const panel = $("#storyPanel");
   if (!panel) return;
-  const chapter = activeStoryChapter();
-  const metrics = chapter.checks.map(storyMetric);
-  const completeCount = metrics.filter(metric => metric.current >= metric.target).length;
-  const pct = clamp(completeCount / metrics.length * 100, 0, 100);
-  const allDone = STORY_CHAPTERS.every(item => item.checks.every(id => {
-    const metric = storyMetric(id);
-    return metric.current >= metric.target;
-  }));
-  panel.classList.toggle("completed", allDone);
-  const rule = settings.language === "en"
-    ? "Economy rule: story never forces prices. Prices move through stock, trades, production, loss and transport."
-    : "经济规则：剧情不直接改价。价格只由库存、交易、生产、损耗与运输自然推动。";
-  const title = settings.language === "en" && chapter.id === "license" ? "Chapter 1: Frontier Pilot License" : chapter.title;
-  const summary = settings.language === "en"
-    ? "This dossier gives direction only. It does not calculate profits or manipulate markets."
-    : chapter.summary;
+  const focus = currentStoryFocus();
+  panel.classList.toggle("completed", focus.allDone);
+  const nextText = focus.allDone
+    ? (settings.language === "en" ? "Free development unlocked" : "自由发展已开放")
+    : `${settings.language === "en" ? "Next" : "下一步"}：${focus.next.label}`;
   panel.innerHTML = `
     <div>
       <span class="story-kicker">${settings.language === "en" ? "FRONTIER DOSSIER" : "边境档案"}</span>
-      <h3>${allDone ? (settings.language === "en" ? "Open Frontier" : "自由边境已开放") : title}</h3>
-      <p>${allDone ? (settings.language === "en" ? "You have proven the core loop. Continue as trader, miner, mercenary, explorer or industrialist." : "你已经打通核心循环。接下来可以作为商人、矿工、佣兵、探索者或制造商自由发展。") : summary}</p>
-      <span class="story-rule">${rule}</span>
+      <h3>${storyTitle(focus.chapter, focus.allDone)}</h3>
+      <p>${storySummary(focus.chapter, focus.allDone)}</p>
+      <div class="story-next"><span>${nextText}</span><button data-story-action="${focus.next.action}" ${focus.allDone ? "disabled" : ""}>${focus.allDone ? (settings.language === "en" ? "Unlocked" : "已开放") : focus.next.actionLabel}</button></div>
+      <span class="story-rule">${storyRuleText()}</span>
     </div>
     <div class="story-objectives">
-      ${metrics.map(metric => {
+      ${focus.metrics.map(metric => {
         const done = metric.current >= metric.target;
         const value = `${formatNumber(Math.min(metric.current, metric.target))}/${formatNumber(metric.target)}`;
-        return `<div class="story-objective ${done ? "done" : ""}"><span>${metric.label}</span><b>${done ? "✓" : value}</b></div>`;
+        return `<div class="story-objective ${done ? "done" : ""}"><span>${metric.label}<small>${metric.guidance}</small></span><b>${done ? "✓" : value}</b></div>`;
       }).join("")}
-      <div class="story-meter"><i style="width:${pct}%"></i></div>
+      <div class="story-meter"><i style="width:${focus.pct}%"></i></div>
     </div>`;
 }
 
@@ -3478,6 +3585,10 @@ function setupEvents() {
   });
   $$(".station-tabs button").forEach(button => button.addEventListener("click", () => activateStationTab(button.dataset.stationTab)));
   $$("[data-hub-module]").forEach(button => button.addEventListener("click", () => openHubModule(button.dataset.hubModule)));
+  document.addEventListener("click", event => {
+    const button = event.target.closest?.("[data-story-action]");
+    if (button && !button.disabled) handleStoryAction(button.dataset.storyAction);
+  });
   $$("[data-market-mode]").forEach(button => button.addEventListener("click", () => {
     marketMode = button.dataset.marketMode;
     $$("[data-market-mode]").forEach(item => item.classList.toggle("active", item === button));

@@ -51,6 +51,8 @@ let browser;
 
   if (!storyState.visible || !storyState.text.includes("边境档案")) throw new Error("Story dossier panel was not rendered");
   if (!storyState.text.includes("剧情不直接改价")) throw new Error("Economy independence rule is missing");
+  if (!storyState.text.includes("采集 3 单位资源")) throw new Error("Story should track real mining progress instead of tutorial completion");
+  if (storyState.text.includes("完成执照训练")) throw new Error("Story should not use tutorial completion as a mainline gate");
   if (storyState.marketAfterRender !== beforeMarket) throw new Error("Rendering story panel changed market state");
   if (storyState.viewedRemoteBefore) throw new Error("Remote-market story flag should start false");
   if (remoteState.selected !== "nyx" || !remoteState.executeDisabled) throw new Error(`Remote market is not quote-only: ${JSON.stringify(remoteState)}`);

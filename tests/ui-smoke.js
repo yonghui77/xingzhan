@@ -34,7 +34,9 @@ let browser;
   const hubState = await page.evaluate(() => ({
     hubActive: document.querySelector("#hubTab").classList.contains("active"),
     modules: document.querySelectorAll("[data-hub-module]").length,
-    headline: document.querySelector("#hubHeadline").textContent
+    headline: document.querySelector("#hubHeadline").textContent,
+    storyPulse: document.querySelector("#hubStoryPulse").innerText,
+    bodyScroll: document.scrollingElement.scrollHeight > innerHeight
   }));
   await page.click('[data-hub-module="market"]');
   await page.waitForFunction(() => document.querySelector("#marketTab").classList.contains("active"));
@@ -155,7 +157,7 @@ let browser;
   await page.screenshot({ path: path.join(__dirname, "map-smoke.png"), fullPage: true });
 
   if (!helpVisible) throw new Error("First-run help was not shown");
-  if (!hubState.hubActive || hubState.modules < 7) throw new Error(`Station hub failed: ${JSON.stringify(hubState)}`);
+  if (!hubState.hubActive || hubState.modules < 7 || !hubState.storyPulse.includes("主线信标") || hubState.bodyScroll) throw new Error(`Station hub failed: ${JSON.stringify(hubState)}`);
   if (!initial.docked || initial.system !== "aurora" || initial.marketItems !== 5 || initial.sellOrders !== 6 || initial.aiCount !== 16) throw new Error(`Invalid initial state: ${JSON.stringify(initial)}`);
   if (!(afterBuy.credits < initial.credits) || afterBuy.ore !== 1) throw new Error(`Market buy failed: ${JSON.stringify(afterBuy)}`);
   if (afterMine <= afterBuy.ore) throw new Error(`Mining did not add cargo: ${afterMine}`);
