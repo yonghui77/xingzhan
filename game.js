@@ -95,6 +95,62 @@ const ENEMY_TYPES = {
 };
 
 const SAVE_KEY = "stellarFrontierSaveV1";
+const UI_SIZE_KEY = "stellarFrontierUiSize";
+const SETTINGS_KEY = "stellarFrontierSettingsV2";
+const UI_SIZES = ["standard", "large", "xlarge"];
+const UI_SIZE_LABELS = { standard: "标准", large: "大号", xlarge: "特大" };
+const DEFAULT_SETTINGS = {
+  uiSize: "large",
+  font: "sans",
+  quality: "high",
+  language: "zh",
+  masterVolume: 65,
+  musicEnabled: true,
+  musicVolume: 45,
+  sfxEnabled: true,
+  sfxVolume: 70
+};
+const EN_LABELS = {
+  goods: {
+    ore: ["Titan Ore", "Basic hull and industrial component material"],
+    crystal: ["Phase Crystal", "Rare energy material from frontier systems"],
+    salvage: ["Ship Salvage", "Recovered components from destroyed ships"],
+    fuel: ["Jump Fuel", "Consumable required for system jumps"],
+    ammo: ["Missile Ammunition", "Military supply consumed on the front line"]
+  },
+  systems: {
+    aurora: ["Aurora", "Morningstar Trade Station"],
+    helios: ["Helios Industrial Zone", "Sunforge Station"],
+    nyx: ["Nyx Frontier", "Nightfall Outpost"],
+    vanta: ["Vanta Deep Space", "Blacktide Freeport"]
+  }
+};
+const UI_TEXT = {
+  zh: {
+    settings: "游戏设置", done: "完成", online: "在线", account: "账户余额",
+    shield: "护盾", hull: "装甲", fuel: "跃迁燃料", firepower: "火力", cargo: "货舱", speed: "速度",
+    market: "地区市场", fitting: "舰船改装", contracts: "合约中心", intel: "区域情报",
+    buy: "购买", sell: "出售", confirmBuy: "确认购买", confirmSell: "确认出售",
+    marketNormal: "市场流动性正常", signals: "信号", ready: "就绪",
+    threat: "区域威胁", flightLog: "航行日志", tacticalRadar: "战术雷达",
+    hub: "星港中枢", hangar: "仓库货舱", map: "星图导航",
+    stationCommand: "STATION COMMAND", welcomeDock: "欢迎回港，飞行员",
+    dockBriefing: "对接臂已锁定，市场、维修、合约与航线情报均已同步。",
+    securityLevel: "安全等级", tradeTax: "交易税率", localThreat: "周边威胁", localTraffic: "本地交通"
+  },
+  en: {
+    settings: "Game Settings", done: "Done", online: "Online", account: "Account Balance",
+    shield: "Shield", hull: "Hull", fuel: "Jump Fuel", firepower: "Damage", cargo: "Cargo", speed: "Speed",
+    market: "Regional Market", fitting: "Ship Fitting", contracts: "Contracts", intel: "Regional Intel",
+    buy: "Buy", sell: "Sell", confirmBuy: "Confirm Purchase", confirmSell: "Confirm Sale",
+    marketNormal: "Market liquidity is normal", signals: "Signals", ready: "Ready",
+    threat: "Regional Threat", flightLog: "Flight Log", tacticalRadar: "Tactical Radar",
+    hub: "Station Hub", hangar: "Hangar Hold", map: "Star Map",
+    stationCommand: "STATION COMMAND", welcomeDock: "Welcome back, pilot",
+    dockBriefing: "Docking arms are locked. Market, repairs, contracts and route intel are synchronized.",
+    securityLevel: "Security", tradeTax: "Trade Tax", localThreat: "Threat", localTraffic: "Traffic"
+  }
+};
 const canvas = $("#gameCanvas");
 const ctx = canvas.getContext("2d");
 const radar = $("#radarCanvas");
@@ -122,6 +178,7 @@ const defaultState = () => ({
 });
 
 let state = loadGame();
+let settings = loadSettings();
 let marketMode = "buy";
 let selectedSystem = null;
 let paused = true;
@@ -130,7 +187,6 @@ let saveTimer = 0;
 let marketTimer = 0;
 let enemySpawnTimer = 0;
 let interactionLock = false;
-let soundEnabled = true;
 let feed = [];
 let aiPilots = [];
 let aiTradeLog = [];
@@ -156,6 +212,129 @@ const keys = {};
 const world = {
   width: 2600, height: 1800, asteroids: [], enemies: [], bullets: [], enemyBullets: [], loot: [], particles: [],
   station: { x: 0, y: 0, radius: 88 }, outpost: null
+};
+
+const audioEngine = {
+  context: null,
+  master: null,
+  music: null,
+  sfx: null,
+  musicNodes: [],
+  musicTimer: null,
+  started: false,
+  ensure() {
+    if (!this.context) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      this.context = new AudioContext();
+      this.master = this.context.createGain();
+      this.music = this.context.createGain();
+      this.sfx = this.context.createGain();
+      this.music.connect(this.master);
+      this.sfx.connect(this.master);
+      this.master.connect(this.context.destination);
+    }
+    if (this.context.state === "suspended") this.context.resume();
+    this.started = true;
+    this.applySettings();
+    if (settings.musicEnabled) this.startMusic();
+  },
+  applySettings() {
+    if (!this.context) return;
+    const now = this.context.currentTime;
+    this.master.gain.setTargetAtTime(settings.masterVolume / 100, now, .03);
+    this.music.gain.setTargetAtTime(settings.musicEnabled ? settings.musicVolume / 100 * .22 : 0, now, .08);
+    this.sfx.gain.setTargetAtTime(settings.sfxEnabled ? settings.sfxVolume / 100 * .42 : 0, now, .03);
+    if (settings.musicEnabled && this.started) this.startMusic();
+    else this.stopMusic();
+  },
+  tone(frequency, duration, options = {}) {
+    if (!this.context || !settings.sfxEnabled) return;
+    const now = this.context.currentTime;
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    oscillator.type = options.type || "sine";
+    oscillator.frequency.setValueAtTime(frequency, now);
+    if (options.endFrequency) oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, options.endFrequency), now + duration);
+    gain.gain.setValueAtTime(.0001, now);
+    gain.gain.exponentialRampToValueAtTime(options.gain || .12, now + .012);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+    oscillator.connect(gain);
+    gain.connect(this.sfx);
+    oscillator.start(now);
+    oscillator.stop(now + duration + .03);
+  },
+  noise(duration = .12, gainValue = .07) {
+    if (!this.context || !settings.sfxEnabled) return;
+    const length = Math.floor(this.context.sampleRate * duration);
+    const buffer = this.context.createBuffer(1, length, this.context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    const source = this.context.createBufferSource();
+    const gain = this.context.createGain();
+    gain.gain.value = gainValue;
+    source.buffer = buffer;
+    source.connect(gain);
+    gain.connect(this.sfx);
+    source.start();
+  },
+  play(name) {
+    if (!this.started || !settings.sfxEnabled) return;
+    if (name === "click") this.tone(520, .05, { gain: .035, type: "sine", endFrequency: 680 });
+    else if (name === "shoot") this.tone(330, .08, { gain: .07, type: "square", endFrequency: 130 });
+    else if (name === "hit") { this.tone(110, .13, { gain: .09, type: "sawtooth", endFrequency: 55 }); this.noise(.1, .04); }
+    else if (name === "shield") this.tone(760, .2, { gain: .09, type: "sine", endFrequency: 260 });
+    else if (name === "mine") this.tone(210, .18, { gain: .045, type: "triangle", endFrequency: 430 });
+    else if (name === "trade") { this.tone(660, .08, { gain: .06 }); setTimeout(() => this.tone(880, .11, { gain: .05 }), 70); }
+    else if (name === "jump") { this.tone(90, .65, { gain: .1, type: "sawtooth", endFrequency: 620 }); this.noise(.5, .035); }
+    else if (name === "explosion") { this.tone(85, .45, { gain: .12, type: "sawtooth", endFrequency: 35 }); this.noise(.35, .1); }
+    else if (name === "alert") { this.tone(440, .12, { gain: .08 }); setTimeout(() => this.tone(330, .16, { gain: .08 }), 140); }
+  },
+  startMusic() {
+    if (!this.context || this.musicNodes.length || !settings.musicEnabled) return;
+    const now = this.context.currentTime;
+    [55, 82.41, 110].forEach((frequency, index) => {
+      const oscillator = this.context.createOscillator();
+      const gain = this.context.createGain();
+      const filter = this.context.createBiquadFilter();
+      oscillator.type = index === 0 ? "sine" : "triangle";
+      oscillator.frequency.value = frequency;
+      filter.type = "lowpass";
+      filter.frequency.value = 360 + index * 140;
+      gain.gain.value = index === 0 ? .16 : .055;
+      oscillator.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.music);
+      oscillator.start(now);
+      this.musicNodes.push(oscillator, gain, filter);
+    });
+    const notes = [220, 246.94, 293.66, 329.63, 369.99];
+    this.musicTimer = setInterval(() => {
+      if (!this.context || !settings.musicEnabled || document.hidden) return;
+      const frequency = notes[Math.floor(Math.random() * notes.length)] / (Math.random() < .45 ? 2 : 1);
+      const oscillator = this.context.createOscillator();
+      const gain = this.context.createGain();
+      const nowTime = this.context.currentTime;
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(.0001, nowTime);
+      gain.gain.exponentialRampToValueAtTime(.035, nowTime + .8);
+      gain.gain.exponentialRampToValueAtTime(.0001, nowTime + 4.5);
+      oscillator.connect(gain);
+      gain.connect(this.music);
+      oscillator.start(nowTime);
+      oscillator.stop(nowTime + 4.7);
+    }, 3600);
+  },
+  stopMusic() {
+    this.musicNodes.forEach(node => {
+      try { if (typeof node.stop === "function") node.stop(); } catch {}
+      try { node.disconnect(); } catch {}
+    });
+    this.musicNodes = [];
+    clearInterval(this.musicTimer);
+    this.musicTimer = null;
+  }
 };
 
 function initializeMarkets() {
@@ -193,6 +372,198 @@ function loadGame() {
 
 function saveGame() {
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+}
+
+function loadSettings() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    const legacySize = localStorage.getItem(UI_SIZE_KEY);
+    return { ...DEFAULT_SETTINGS, ...stored, ...(legacySize && !stored.uiSize ? { uiSize: legacySize } : {}) };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function applyTextSize(size) {
+  const resolved = UI_SIZES.includes(size) ? size : "large";
+  settings.uiSize = resolved;
+  document.body.dataset.uiSize = resolved;
+  localStorage.setItem(UI_SIZE_KEY, resolved);
+  saveSettings();
+}
+
+function localizedGood(key) {
+  if (settings.language === "en" && EN_LABELS.goods[key]) {
+    return { name: EN_LABELS.goods[key][0], description: EN_LABELS.goods[key][1] };
+  }
+  return GOODS[key];
+}
+
+function localizedSystem(key) {
+  if (settings.language === "en" && EN_LABELS.systems[key]) {
+    return { name: EN_LABELS.systems[key][0], station: EN_LABELS.systems[key][1] };
+  }
+  return SYSTEMS[key];
+}
+
+function applyLanguage() {
+  const text = UI_TEXT[settings.language] || UI_TEXT.zh;
+  document.documentElement.lang = settings.language === "en" ? "en" : "zh-CN";
+  $(".wallet>span").textContent = text.account;
+  const statusLabels = $$(".status-line>span");
+  if (statusLabels[0]) statusLabels[0].textContent = text.shield;
+  if (statusLabels[1]) statusLabels[1].textContent = text.hull;
+  if (statusLabels[2]) statusLabels[2].textContent = text.fuel;
+  const statLabels = $$(".ship-stats>span");
+  if (statLabels[0]) statLabels[0].childNodes[0].textContent = `${text.firepower} `;
+  if (statLabels[1]) statLabels[1].childNodes[0].textContent = `${text.cargo} `;
+  if (statLabels[2]) statLabels[2].childNodes[0].textContent = `${text.speed} `;
+  const tabs = $$(".station-tabs button");
+  [text.hub, text.market, text.fitting, text.contracts, text.hangar, text.intel].forEach((label, index) => tabs[index] && (tabs[index].textContent = label));
+  updateStationModeLabel($(".station-tabs button.active")?.dataset.stationTab || "hub");
+  if ($("#hubKicker")) $("#hubKicker").textContent = text.stationCommand;
+  if ($("#hubHeadline")) $("#hubHeadline").textContent = text.welcomeDock;
+  if ($("#hubBriefing")) $("#hubBriefing").textContent = text.dockBriefing;
+  if ($("#hubSecurityLabel")) $("#hubSecurityLabel").textContent = text.securityLevel;
+  if ($("#hubTaxLabel")) $("#hubTaxLabel").textContent = text.tradeTax;
+  if ($("#hubThreatLabel")) $("#hubThreatLabel").textContent = text.localThreat;
+  if ($("#hubTrafficLabel")) $("#hubTrafficLabel").textContent = text.localTraffic;
+  if ($("#hangarTitle")) $("#hangarTitle").textContent = text.hangar;
+  if ($("#hangarUsageLabel")) $("#hangarUsageLabel").textContent = settings.language === "en" ? "Cargo Usage" : "货舱占用";
+  if ($("#hangarValueLabel")) $("#hangarValueLabel").textContent = settings.language === "en" ? "Local Sell Estimate" : "本地卖出估值";
+  if ($("#hangarNotice")) $("#hangarNotice").textContent = settings.language === "en"
+    ? "Cargo travels with your ship. Regional prices move with inventory, AI trading and hostile activity."
+    : "货物会随玩家移动，地区市场价格会根据库存、AI交易与敌对活动波动。";
+  const modes = $$("[data-market-mode]");
+  if (modes[0]) modes[0].textContent = text.buy;
+  if (modes[1]) modes[1].textContent = text.sell;
+  $(".radar-card .card-title strong").textContent = text.tacticalRadar;
+  $(".threat-card .card-title strong").textContent = text.threat;
+  $(".feed-card .card-title strong").textContent = text.flightLog;
+  $("#settingsPanel h2").textContent = text.settings;
+  $("#settingsDoneBtn").textContent = text.done;
+  $("#settingsBtn").title = text.settings;
+  $$("[data-open-settings]").forEach(button => button.textContent = text.settings);
+  const settingCopy = settings.language === "en" ? [
+    ["Interface Size", "Adjust the size of the HUD, market and help text."],
+    ["Font Style", "Choose a readable or terminal-inspired typeface."],
+    ["Graphics Quality", "Adjust particles, star density, glow and render resolution."],
+    ["Language", "Switch the primary game interface language."],
+    ["Master Volume", "Controls the overall game volume."],
+    ["Background Music", "Procedurally generated deep-space ambience."],
+    ["Sound Effects", "Weapons, shields, mining, trading, jumps and UI sounds."]
+  ] : [
+    ["界面字号", "调整HUD、市场和说明文字的大小。"],
+    ["字体风格", "选择更适合阅读或更有科幻感的字体。"],
+    ["画面质量", "调整粒子、星空密度、光晕效果和渲染分辨率。"],
+    ["语言", "切换游戏核心界面语言。"],
+    ["主音量", "控制游戏的整体音量。"],
+    ["背景音乐", "程序化生成的太空氛围音乐。"],
+    ["游戏音效", "武器、护盾、采矿、交易、跃迁和按钮音效。"]
+  ];
+  $$(".setting-row").forEach((row, index) => {
+    if (!settingCopy[index]) return;
+    row.querySelector(":scope > div:first-child strong").textContent = settingCopy[index][0];
+    row.querySelector(":scope > div:first-child span").textContent = settingCopy[index][1];
+  });
+  const labels = settings.language === "en"
+    ? { standard: "Standard", large: "Large", xlarge: "Extra Large", sans: "Clear", rounded: "Rounded", mono: "Terminal", low: "Performance", medium: "Balanced", high: "High" }
+    : { standard: "标准", large: "大号", xlarge: "特大", sans: "清晰", rounded: "圆润", mono: "终端", low: "流畅", medium: "均衡", high: "精细" };
+  Object.entries(labels).forEach(([value, label]) => {
+    const button = $(`[data-ui-size-choice="${value}"],[data-font-choice="${value}"],[data-quality-choice="${value}"]`);
+    if (button) button.textContent = label;
+  });
+  $(".settings-preview>span").textContent = settings.language === "en" ? "Preview" : "预览";
+  $(".settings-preview>strong").textContent = settings.language === "en" ? "Regional market prices are fluctuating" : "区域市场价格出现波动";
+  $(".settings-preview>p").textContent = settings.language === "en" ? "Pirate activity is reducing transport efficiency and raising local supply prices." : "海盗活动正在影响运输效率与当地补给价格。";
+  $(".market-toolbar p").textContent = settings.language === "en" ? "Regional inventory · Physical transport required · AI pilots trade in real time" : "区域独立库存 · 实物必须运输 · AI玩家实时成交";
+  $(".market-search input").placeholder = settings.language === "en" ? "Search market" : "搜索商品";
+  $(".market-group-title").innerHTML = settings.language === "en" ? "Market Categories <b>5</b>" : "市场分类 <b>5</b>";
+  $(".price-chart-panel .terminal-section-head strong").textContent = settings.language === "en" ? "Price History" : "价格走势";
+  $(".price-chart-panel .terminal-section-head span").textContent = settings.language === "en" ? "Last 24 cycles" : "最近24个周期";
+  $(".order-book-panel .terminal-section-head strong").textContent = settings.language === "en" ? "Market Depth" : "市场深度";
+  $(".order-book-panel .terminal-section-head span").textContent = settings.language === "en" ? "Quantity / Unit Price" : "数量 / 单价";
+  $(".market-spread span").textContent = settings.language === "en" ? "Spread" : "价差";
+  const sidebarHeads = $$(".market-sidebar .terminal-section-head strong");
+  const sidebarLabels = settings.language === "en" ? ["My Position", "Pilot Transactions", "Regional Comparison"] : ["我的持仓", "玩家成交动态", "地区比较"];
+  sidebarHeads.forEach((node, index) => node.textContent = sidebarLabels[index]);
+  $(".ticket-total>span").textContent = settings.language === "en" ? "Estimated Total" : "预计总额";
+  $$(".quantity-presets button").forEach(button => {
+    if (button.dataset.qty === "max") button.textContent = settings.language === "en" ? "Max" : "最大";
+  });
+  updateSystemHud();
+  renderStation();
+  renderSettings();
+}
+
+function applyGraphicsQuality(quality) {
+  settings.quality = ["low", "medium", "high"].includes(quality) ? quality : "high";
+  document.body.dataset.quality = settings.quality;
+  resize();
+  saveSettings();
+}
+
+function applySettings() {
+  applyTextSize(settings.uiSize);
+  document.body.dataset.font = settings.font;
+  document.body.dataset.quality = settings.quality;
+  applyLanguage();
+  audioEngine.applySettings();
+  renderSettings();
+  resize();
+  saveSettings();
+}
+
+function renderSettings() {
+  $$("[data-ui-size-choice]").forEach(button => button.classList.toggle("active", button.dataset.uiSizeChoice === settings.uiSize));
+  $$("[data-font-choice]").forEach(button => button.classList.toggle("active", button.dataset.fontChoice === settings.font));
+  $$("[data-quality-choice]").forEach(button => button.classList.toggle("active", button.dataset.qualityChoice === settings.quality));
+  $$("[data-language-choice]").forEach(button => button.classList.toggle("active", button.dataset.languageChoice === settings.language));
+  $("#masterVolume").value = settings.masterVolume;
+  $("#musicVolume").value = settings.musicVolume;
+  $("#sfxVolume").value = settings.sfxVolume;
+  $("#masterVolumeValue").textContent = `${settings.masterVolume}%`;
+  $("#musicVolumeValue").textContent = `${settings.musicVolume}%`;
+  $("#sfxVolumeValue").textContent = `${settings.sfxVolume}%`;
+  updateToggleButton("#musicToggle", settings.musicEnabled);
+  updateToggleButton("#sfxToggle", settings.sfxEnabled);
+}
+
+function updateToggleButton(selector, active) {
+  const button = $(selector);
+  button.classList.toggle("active", active);
+  button.setAttribute("aria-pressed", String(active));
+  button.querySelector("span").textContent = settings.language === "en" ? (active ? "On" : "Off") : (active ? "开启" : "关闭");
+}
+
+function openSettings() {
+  $("#settingsPanel").classList.remove("hidden");
+  paused = true;
+  renderSettings();
+}
+
+function closeSettings() {
+  $("#settingsPanel").classList.add("hidden");
+  paused = state.docked || !$("#mapPanel").classList.contains("hidden") || !$("#helpPanel").classList.contains("hidden");
+}
+
+function setSetting(key, value, previewSound = false) {
+  settings[key] = value;
+  if (key === "uiSize") applyTextSize(value);
+  else if (key === "font") document.body.dataset.font = value;
+  else if (key === "quality") applyGraphicsQuality(value);
+  else if (key === "language") applyLanguage();
+  audioEngine.applySettings();
+  renderSettings();
+  saveSettings();
+  if (previewSound) {
+    audioEngine.ensure();
+    audioEngine.play("trade");
+  }
 }
 
 function shipStats() {
@@ -293,8 +664,9 @@ function createAIPilots(count = state.aiCount) {
 
 function updateAIPopulationHud() {
   const local = aiPilots.filter(pilot => pilot.system === state.currentSystem).length;
-  $("#aiOnlineCount").textContent = `${state.aiCount} 在线`;
-  $("#localCount").textContent = `${world.enemies.length + world.asteroids.length + local} 信号`;
+  const text = UI_TEXT[settings.language] || UI_TEXT.zh;
+  $("#aiOnlineCount").textContent = `${state.aiCount} ${text.online}`;
+  $("#localCount").textContent = `${world.enemies.length + world.asteroids.length + local} ${text.signals}`;
 }
 
 function recordAITrade(pilot, itemKey, amount, side, systemId, price) {
@@ -419,7 +791,8 @@ function updateAIPilots(dt) {
 }
 
 function resize() {
-  const dpr = devicePixelRatio || 1;
+  const qualityScale = settings.quality === "low" ? .65 : settings.quality === "medium" ? .85 : 1;
+  const dpr = Math.max(.65, (devicePixelRatio || 1) * qualityScale);
   canvas.width = innerWidth * dpr;
   canvas.height = innerHeight * dpr;
   canvas.style.width = `${innerWidth}px`;
@@ -558,7 +931,8 @@ function flashWallet() {
 }
 
 function createParticles(x, y, color, amount = 8, speed = 100) {
-  for (let i = 0; i < amount; i++) {
+  const factor = settings.quality === "low" ? .35 : settings.quality === "medium" ? .65 : 1;
+  for (let i = 0; i < Math.max(1, Math.round(amount * factor)); i++) {
     const angle = Math.random() * Math.PI * 2;
     world.particles.push({
       x, y, vx: Math.cos(angle) * randomRange(20, speed), vy: Math.sin(angle) * randomRange(20, speed),
@@ -623,6 +997,7 @@ function updatePVE(dt) {
 function triggerAlertReinforcement(level) {
   if (level <= 0 || pve.reinforcements.has(level)) return;
   pve.reinforcements.add(level);
+  audioEngine.play("alert");
   const composition =
     level === 1 ? ["scout"] :
     level === 2 ? ["interceptor", "interceptor"] :
@@ -738,6 +1113,7 @@ function shootPlayer() {
   });
   player.fireCooldown = stats.fireRate;
   pve.heat = clamp(pve.heat + .45, 0, 100);
+  audioEngine.play("shoot");
   createParticles(player.x + Math.cos(angle) * 22, player.y + Math.sin(angle) * 22, "#39ddff", 2, 35);
 }
 
@@ -814,6 +1190,7 @@ function destroyOutpost() {
   pve.heat = Math.max(0, pve.heat - 55);
   pve.recentKills += 8;
   createParticles(outpost.x, outpost.y, "#ff617b", 65, 280);
+  audioEngine.play("explosion");
   addFeed("<b>血棘海盗据点</b> 已被摧毁，地区威胁下降，航线补给开始恢复。", "danger");
   toast(`据点清除：+650 ISK、残骸×${recovered}、情报×3`);
   flashWallet();
@@ -909,6 +1286,7 @@ function destroyEnemy(enemy) {
     addFeed("从敌舰数据库中提取到 1 份海盗情报。");
   }
   createParticles(enemy.x, enemy.y, spec.color, enemy.tier === 2 ? 30 : 18, 190);
+  audioEngine.play("explosion");
   addFeed(`摧毁 <b>${enemy.name}</b>，获得 ${spec.bounty} ISK 与残骸。`, "danger");
 }
 
@@ -924,10 +1302,12 @@ function damagePlayer(amount, source = null) {
     $("#shieldOrb").classList.remove("hit");
     requestAnimationFrame(() => $("#shieldOrb").classList.add("hit"));
     createParticles(player.x, player.y, "#39ddff", 7, 95);
+    audioEngine.play("shield");
   }
   if (amount > 0) {
     state.hull -= amount;
     createParticles(player.x, player.y, "#ff9d66", 9, 115);
+    audioEngine.play("hit");
   }
   if (state.hull <= 0) destroyPlayer();
 }
@@ -1046,6 +1426,7 @@ function handleInteractionAction() {
     if (cargoSpaceFor(target.resource) <= 0) return toast("货舱已满，无法启动采矿束");
     mining.targetId = target.id;
     mining.active = true;
+    audioEngine.play("mine");
     $("#miningPanel").classList.remove("hidden");
     toast(`已锁定 ${GOODS[target.resource].name}`);
   }
@@ -1076,6 +1457,7 @@ function mineAsteroid(asteroid, dt) {
       createParticles(asteroid.x, asteroid.y, GOODS[asteroid.resource].color, 18, 150);
     } else toast("货舱已满，无法继续采矿");
     world.asteroids = world.asteroids.filter(item => item !== asteroid);
+    audioEngine.play("trade");
     stopMining(false);
     setTimeout(() => {
       if (!state.docked) spawnAsteroid();
@@ -1122,6 +1504,7 @@ function jumpTo(systemId) {
   state.fuel--;
   state.stats.jumps++;
   state.currentSystem = systemId;
+  audioEngine.play("jump");
   if (!state.discovered.includes(systemId)) state.discovered.push(systemId);
   selectedSystem = null;
   $("#mapPanel").classList.add("hidden");
@@ -1150,6 +1533,7 @@ function buyItem(itemKey, requested) {
   autoRefuel();
   addFeed(`购入 ${GOODS[itemKey].name} × ${amount}，支出 ${formatNumber(gross + fee)} ISK。`);
   flashWallet();
+  audioEngine.play("trade");
   renderStation();
   updateHud();
   saveGame();
@@ -1170,6 +1554,7 @@ function sellItem(itemKey, requested) {
   market.priceFactor = clamp(market.priceFactor * (1 - amount / (SYSTEMS[state.currentSystem].stock[itemKey] * 22)), .3, 3.5);
   addFeed(`售出 ${GOODS[itemKey].name} × ${amount}，收入 ${formatNumber(gross - fee)} ISK。`);
   flashWallet();
+  audioEngine.play("trade");
   renderStation();
   updateHud();
   updateMission();
@@ -1261,18 +1646,65 @@ function completeMission() {
   saveGame();
 }
 
+function updateStationModeLabel(tabId) {
+  const zh = settings.language !== "en";
+  const labels = zh ? {
+    hub: "DOCKED · 星港中枢",
+    market: "DOCKED · 市场终端",
+    shipyard: "DOCKED · 舰船维护",
+    contracts: "DOCKED · 任务大厅",
+    hangar: "DOCKED · 仓库货舱",
+    intel: "DOCKED · 情报终端"
+  } : {
+    hub: "DOCKED · STARPORT HUB",
+    market: "DOCKED · MARKET TERMINAL",
+    shipyard: "DOCKED · SERVICE BAY",
+    contracts: "DOCKED · CONTRACT HALL",
+    hangar: "DOCKED · HANGAR HOLD",
+    intel: "DOCKED · INTEL TERMINAL"
+  };
+  const node = $("#stationModeLabel");
+  if (node) node.textContent = labels[tabId] || labels.hub;
+}
+
+function activateStationTab(tabId, options = {}) {
+  if (tabId === "map") {
+    openMap();
+    return;
+  }
+  if (tabId === "settings") {
+    openSettings();
+    return;
+  }
+  const target = $(`#${tabId}Tab`);
+  if (!target) return;
+  $$(".station-tabs button").forEach(button => button.classList.toggle("active", button.dataset.stationTab === tabId));
+  $$(".station-tab").forEach(tab => tab.classList.toggle("active", tab === target));
+  updateStationModeLabel(tabId);
+  if (!options.skipRender) renderStation();
+}
+
+function openHubModule(module) {
+  if (module === "settings") return openSettings();
+  if (module === "map") return openMap();
+  activateStationTab(module);
+}
+
 function openStation() {
   const system = SYSTEMS[state.currentSystem];
   $("#stationPanel").classList.remove("hidden");
   $("#stationTitle").textContent = system.station;
   $("#stationTrait").textContent = system.trait;
+  activateStationTab("hub", { skipRender: true });
   renderStation();
 }
 
 function renderStation() {
+  renderHub();
   renderMarket();
   renderUpgrades();
   renderContracts();
+  renderHangar();
   renderIntel();
   const stats = shipStats();
   const repairCost = Math.ceil((stats.maxHull - state.hull) * 8 + (stats.maxShield - state.shield) * 1.5);
@@ -1280,20 +1712,141 @@ function renderStation() {
   $("#repairBtn").disabled = repairCost <= 0;
 }
 
+function stationThreatText(value) {
+  if (settings.language === "en") {
+    if (value < 15) return "Stable";
+    if (value < 40) return "Controlled";
+    if (value < 70) return "Danger";
+    return "Critical";
+  }
+  if (value < 15) return "稳定";
+  if (value < 40) return "受控";
+  if (value < 70) return "危险";
+  return "高危";
+}
+
+function bestTradeOpportunity() {
+  const current = state.currentSystem;
+  const opportunities = [];
+  Object.keys(GOODS).forEach(key => {
+    const localBuy = marketPrice(current, key, "buy");
+    Object.keys(SYSTEMS).forEach(systemId => {
+      if (systemId === current) return;
+      const remoteSell = marketPrice(systemId, key, "sell");
+      const margin = remoteSell - localBuy;
+      if (margin > 0) opportunities.push({ key, systemId, margin, pct: margin / localBuy * 100 });
+    });
+  });
+  return opportunities.sort((a, b) => b.pct - a.pct)[0] || null;
+}
+
+function renderHub() {
+  const text = UI_TEXT[settings.language] || UI_TEXT.zh;
+  const system = SYSTEMS[state.currentSystem];
+  const label = localizedSystem(state.currentSystem);
+  const stats = shipStats();
+  const repairCost = Math.ceil((stats.maxHull - state.hull) * 8 + (stats.maxShield - state.shield) * 1.5);
+  const cargoUsedNow = cargoUsed();
+  const localPilots = aiPilots.filter(pilot => pilot.system === state.currentSystem).length;
+  const threatValue = state.systemThreat[state.currentSystem] || 0;
+  const scarce = Object.keys(GOODS).filter(key => state.markets[state.currentSystem][key].stock < system.stock[key] * .35).length;
+  const activeContracts = CONTRACT_LIBRARY.filter(contract => contract.id !== state.mission?.id).length;
+  const best = bestTradeOpportunity();
+
+  $("#hubKicker").textContent = text.stationCommand;
+  $("#hubHeadline").textContent = settings.language === "en" ? `Docked at ${label.station}` : `已停靠：${label.station}`;
+  $("#hubBriefing").textContent = settings.language === "en"
+    ? "Choose a station module. The market is now a terminal inside the starport rather than the whole station."
+    : "请选择站内模块。市场现在是星港里的一个终端，而不是整个空间站。";
+  $("#hubSecurityLabel").textContent = text.securityLevel;
+  $("#hubTaxLabel").textContent = text.tradeTax;
+  $("#hubThreatLabel").textContent = text.localThreat;
+  $("#hubTrafficLabel").textContent = text.localTraffic;
+  $("#hubSecurity").textContent = system.securityText;
+  $("#hubTax").textContent = "2.5%";
+  $("#hubThreat").textContent = stationThreatText(threatValue);
+  $("#hubTraffic").textContent = settings.language === "en" ? `${localPilots} ships` : `${localPilots} 艘`;
+
+  const moduleCopy = settings.language === "en" ? {
+    market: ["Market Exchange", "Buy, sell, inspect order books and price history", scarce ? `${scarce} scarce` : "Online"],
+    shipyard: ["Ship Service Bay", "Repair shields and hull; upgrade weapons and cargo", repairCost ? `${formatNumber(repairCost)} ISK` : "Ready"],
+    contracts: ["Contract Hall", "Accept hauling, mining, combat and trading contracts", `${activeContracts} open`],
+    hangar: ["Hangar Hold", "Inspect inventory, cargo usage and local valuation", `${cargoUsedNow}/${stats.cargo}`],
+    map: ["Star Map", "Review security, routes and jump options", `${state.fuel}/${state.maxFuel}`],
+    intel: ["Intel Terminal", "Regional spreads, risk reports and pirate activity", stationThreatText(threatValue)],
+    settings: ["System Settings", "Fonts, graphics clarity, language, music and SFX", "Prefs"]
+  } : {
+    market: ["市场交易所", "买入、出售、查看买卖盘和价格走势", scarce ? `${scarce} 类紧缺` : "在线"],
+    shipyard: ["舰船维护区", "维修护盾与装甲，升级武器和货舱", repairCost ? `${formatNumber(repairCost)} ISK` : "就绪"],
+    contracts: ["任务大厅", "领取运输、采矿、清剿与贸易合约", `${activeContracts} 份可接`],
+    hangar: ["仓库货舱", "查看库存、货舱占用与本地估值", `${cargoUsedNow}/${stats.cargo}`],
+    map: ["星图导航", "查看星系安全、航线和跃迁条件", `${state.fuel}/${state.maxFuel}`],
+    intel: ["情报终端", "地区价差、风险报告与海盗活动", stationThreatText(threatValue)],
+    settings: ["系统设置", "字体、清晰度、语言、音乐和音效", "偏好"]
+  };
+  Object.entries(moduleCopy).forEach(([key, [title, copy, status]]) => {
+    const titleNode = $(`[data-module-title="${key}"]`);
+    const copyNode = $(`[data-module-copy="${key}"]`);
+    const statusNode = $(`[data-module-status="${key}"]`);
+    if (titleNode) titleNode.textContent = title;
+    if (copyNode) copyNode.textContent = copy;
+    if (statusNode) statusNode.textContent = status;
+  });
+
+  const news = [];
+  news.push({
+    level: threatValue >= 65 ? "danger" : threatValue >= 35 ? "warn" : "",
+    text: settings.language === "en" ? `Route security: ${stationThreatText(threatValue)} · ${system.risk}` : `航线安全：${stationThreatText(threatValue)} · ${system.risk}`,
+    tag: "SEC"
+  });
+  news.push({
+    level: best && best.pct > 35 ? "warn" : "",
+    text: best
+      ? (settings.language === "en"
+        ? `${localizedGood(best.key).name} → ${localizedSystem(best.systemId).station} spread +${best.pct.toFixed(0)}%`
+        : `${localizedGood(best.key).name} → ${localizedSystem(best.systemId).station} 价差 +${best.pct.toFixed(0)}%`)
+      : (settings.language === "en" ? "No strong arbitrage route detected" : "暂无明显套利路线"),
+    tag: "MKT"
+  });
+  news.push({
+    level: state.mission ? "" : "warn",
+    text: state.mission
+      ? (settings.language === "en" ? `Active contract: ${state.mission.title}` : `当前合约：${state.mission.title}`)
+      : (settings.language === "en" ? "Contract hall has open work orders" : "任务大厅有可领取合约"),
+    tag: "JOB"
+  });
+  news.push({
+    level: "",
+    text: settings.language === "en"
+      ? `${localPilots} simulated pilots are moving goods in this system`
+      : `${localPilots} 名模拟玩家正在本地搬运货物`,
+    tag: "AI"
+  });
+  $("#hubNewsFeed").innerHTML = news.map(item => `
+    <div class="${item.level}"><i></i><span>${item.text}</span><b>${item.tag}</b></div>
+  `).join("");
+}
+
 function renderMarket() {
   const systemId = state.currentSystem;
   const system = SYSTEMS[systemId];
   const market = state.markets[systemId];
   const scarce = Object.keys(GOODS).filter(key => market[key].stock < system.stock[key] * .35).length;
-  $("#marketSummary").textContent = scarce ? `${scarce} 类商品供应紧张` : "市场流动性正常";
-  const filtered = Object.entries(GOODS).filter(([, item]) => item.name.includes(marketSearchText) || item.description.includes(marketSearchText));
+  $("#marketSummary").textContent = settings.language === "en"
+    ? (scarce ? `${scarce} product categories are in short supply` : "Market liquidity is normal")
+    : (scarce ? `${scarce} 类商品供应紧张` : "市场流动性正常");
+  const filtered = Object.entries(GOODS).filter(([key]) => {
+    const item = localizedGood(key);
+    return item.name.toLowerCase().includes(marketSearchText.toLowerCase()) || item.description.toLowerCase().includes(marketSearchText.toLowerCase());
+  });
   $("#marketItemList").innerHTML = filtered.map(([key, item]) => {
+    const label = localizedGood(key);
     const price = marketPrice(systemId, key, "buy");
     const change = (price / item.base - 1) * 100;
     return `
       <button class="market-list-item ${selectedMarketItem === key ? "active" : ""}" data-market-item="${key}" style="--item-color:${item.color}">
         <span class="market-list-icon">${item.icon}</span>
-        <span><strong>${item.name}</strong><small>库存 ${Math.floor(market[key].stock)} · 持有 ${state.cargo[key] || 0}</small></span>
+        <span><strong>${label.name}</strong><small>${settings.language === "en" ? "Stock" : "库存"} ${Math.floor(market[key].stock)} · ${settings.language === "en" ? "Owned" : "持有"} ${state.cargo[key] || 0}</small></span>
         <span class="market-list-price"><b>${formatNumber(price)}</b><span class="${change > 0 ? "up" : ""}">${change >= 0 ? "+" : ""}${change.toFixed(0)}%</span></span>
       </button>`;
   }).join("");
@@ -1308,6 +1861,7 @@ function renderMarketDetail() {
   const systemId = state.currentSystem;
   const itemKey = selectedMarketItem;
   const item = GOODS[itemKey];
+  const label = localizedGood(itemKey);
   const market = state.markets[systemId][itemKey];
   const buyPrice = marketPrice(systemId, itemKey, "buy");
   const sellPrice = marketPrice(systemId, itemKey, "sell");
@@ -1318,17 +1872,19 @@ function renderMarketDetail() {
 
   $("#marketSelectedIcon").textContent = item.icon;
   $("#marketSelectedIcon").style.setProperty("--selected-color", item.color);
-  $("#marketSelectedCategory").textContent = itemKey === "ore" || itemKey === "crystal" ? "资源与工业原料" : "舰船补给与回收品";
-  $("#marketSelectedName").textContent = item.name;
-  $("#marketSelectedDescription").textContent = item.description;
+  $("#marketSelectedCategory").textContent = settings.language === "en"
+    ? (itemKey === "ore" || itemKey === "crystal" ? "Resources & Industry" : "Ship Supplies & Salvage")
+    : (itemKey === "ore" || itemKey === "crystal" ? "资源与工业原料" : "舰船补给与回收品");
+  $("#marketSelectedName").textContent = label.name;
+  $("#marketSelectedDescription").textContent = label.description;
   $("#marketMidPrice").textContent = `${formatNumber(Math.round((buyPrice + sellPrice) / 2))} ISK`;
   $("#marketPriceChange").textContent = `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
   $("#marketPriceChange").className = change > 0 ? "up" : "";
   $("#marketSpread").textContent = `${formatNumber(buyPrice - sellPrice)} ISK`;
-  $("#ticketModeLabel").textContent = marketMode === "buy" ? "立即购买" : "立即出售";
-  $("#ticketAvailable").textContent = marketMode === "buy" ? `市场库存 ${available}` : `货舱持有 ${available}`;
-  $("#selectedOwned").textContent = `${owned} 单位`;
-  $("#executeTradeBtn").textContent = marketMode === "buy" ? "确认购买" : "确认出售";
+  $("#ticketModeLabel").textContent = settings.language === "en" ? (marketMode === "buy" ? "Instant Buy" : "Instant Sell") : (marketMode === "buy" ? "立即购买" : "立即出售");
+  $("#ticketAvailable").textContent = settings.language === "en" ? (marketMode === "buy" ? `Market Stock ${available}` : `Cargo Owned ${available}`) : (marketMode === "buy" ? `市场库存 ${available}` : `货舱持有 ${available}`);
+  $("#selectedOwned").textContent = settings.language === "en" ? `${owned} units` : `${owned} 单位`;
+  $("#executeTradeBtn").textContent = settings.language === "en" ? (marketMode === "buy" ? "Confirm Purchase" : "Confirm Sale") : (marketMode === "buy" ? "确认购买" : "确认出售");
   $("#executeTradeBtn").classList.toggle("sell", marketMode === "sell");
 
   const quantityInput = $("#tradeQuantity");
@@ -1477,6 +2033,37 @@ function renderContracts() {
   $$("[data-contract]").forEach(button => button.addEventListener("click", () => acceptContract(button.dataset.contract)));
 }
 
+function renderHangar() {
+  const stats = shipStats();
+  const used = cargoUsed();
+  const entries = Object.entries(state.cargo).filter(([, amount]) => amount > 0);
+  const totalValue = entries.reduce((sum, [key, amount]) => sum + marketPrice(state.currentSystem, key, "sell") * amount, 0);
+  $("#hangarTitle").textContent = settings.language === "en" ? "Hangar & Cargo" : "仓库与货舱";
+  $("#hangarCargoGrid").innerHTML = entries.length ? entries.map(([key, amount]) => {
+    const item = GOODS[key];
+    const label = localizedGood(key);
+    const unitValue = marketPrice(state.currentSystem, key, "sell");
+    return `
+      <article class="hangar-cargo-item" style="--item-color:${item.color}">
+        <i>${item.icon}</i>
+        <span><strong>${label.name}</strong><span>${settings.language === "en" ? "Unit sell" : "本地卖出"} ${formatNumber(unitValue)} ISK · ${settings.language === "en" ? "Weight" : "重量"} ${item.weight}</span></span>
+        <b>× ${amount}</b>
+      </article>`;
+  }).join("") : `<div class="hangar-empty">${settings.language === "en" ? "Cargo hold empty · find a route, mine ore, or loot wreckage." : "货舱为空 · 可以跑商、采矿或回收残骸。"}</div>`;
+  $("#hangarUsageLabel").textContent = settings.language === "en" ? "Cargo Usage" : "货舱占用";
+  $("#hangarValueLabel").textContent = settings.language === "en" ? "Local Sell Estimate" : "本地卖出估值";
+  $("#hangarCargoUsage").textContent = `${used} / ${stats.cargo}`;
+  $("#hangarCargoBar").style.width = `${clamp(used / stats.cargo * 100, 0, 100)}%`;
+  $("#hangarHoldValue").textContent = `${formatNumber(totalValue)} ISK`;
+  const shipRows = settings.language === "en"
+    ? [["Shield", `${Math.ceil(state.shield)} / ${stats.maxShield}`], ["Hull", `${Math.ceil(state.hull)} / ${stats.maxHull}`], ["Damage", Math.round(stats.damage)], ["Mining Rate", `${stats.miningRate.toFixed(1)}x`], ["Speed", Math.round(stats.speed)], ["Jump Fuel", `${state.fuel} / ${state.maxFuel}`]]
+    : [["护盾", `${Math.ceil(state.shield)} / ${stats.maxShield}`], ["装甲", `${Math.ceil(state.hull)} / ${stats.maxHull}`], ["火力", Math.round(stats.damage)], ["采矿效率", `${stats.miningRate.toFixed(1)}x`], ["速度", Math.round(stats.speed)], ["跃迁燃料", `${state.fuel} / ${state.maxFuel}`]];
+  $("#hangarShipStats").innerHTML = shipRows.map(([name, value]) => `<div><span>${name}</span><b>${value}</b></div>`).join("");
+  $("#hangarNotice").textContent = settings.language === "en"
+    ? "Cargo travels with your ship. Regional prices move with inventory, AI trading and hostile activity."
+    : "货物会随玩家移动，地区市场价格会根据库存、AI交易与敌对活动波动。";
+}
+
 function renderIntel() {
   const current = state.currentSystem;
   const opportunities = [];
@@ -1500,8 +2087,9 @@ function renderIntel() {
 
 function updateSystemHud() {
   const system = SYSTEMS[state.currentSystem];
-  $("#systemName").textContent = system.name;
-  $("#locationName").textContent = state.docked ? system.station : "星系空间";
+  const label = localizedSystem(state.currentSystem);
+  $("#systemName").textContent = label.name;
+  $("#locationName").textContent = state.docked ? label.station : (settings.language === "en" ? "System Space" : "星系空间");
   const badge = $("#securityBadge");
   badge.textContent = system.securityText;
   badge.className = `security ${system.security >= .7 ? "safe" : system.security > 0 ? "low" : "null"}`;
@@ -1525,7 +2113,7 @@ function updateHud() {
   $("#cargoStat").textContent = `${cargoUsed()}/${stats.cargo}`;
   $("#speedStat").textContent = Math.round(stats.speed);
   $("#boostStatus").textContent = `${Math.round(player.boostEnergy)}%`;
-  $("#weaponCooldown").textContent = player.fireCooldown > 0 ? `${player.fireCooldown.toFixed(1)}s` : "就绪";
+  $("#weaponCooldown").textContent = player.fireCooldown > 0 ? `${player.fireCooldown.toFixed(1)}s` : (UI_TEXT[settings.language] || UI_TEXT.zh).ready;
   updateSystemHud();
   updateAIPopulationHud();
   updateCargoHud();
@@ -1535,7 +2123,7 @@ function updateHud() {
 function updateCargoHud() {
   const entries = Object.entries(state.cargo).filter(([, amount]) => amount > 0);
   $("#cargoList").innerHTML = entries.length ? entries.map(([key, amount]) => `
-    <div class="cargo-row"><i style="background:${GOODS[key].color}"></i><span>${GOODS[key].name}</span><b>× ${amount}</b></div>`).join("") : `<div class="cargo-empty">货舱为空 · 去寻找第一笔生意</div>`;
+    <div class="cargo-row"><i style="background:${GOODS[key].color}"></i><span>${localizedGood(key).name}</span><b>× ${amount}</b></div>`).join("") : `<div class="cargo-empty">${settings.language === "en" ? "Cargo is empty · Find your first opportunity" : "货舱为空 · 去寻找第一笔生意"}</div>`;
   const value = entries.reduce((sum, [key, amount]) => sum + marketPrice(state.currentSystem, key, "sell") * amount, 0);
   $("#cargoValue").textContent = `${formatNumber(value)} ISK`;
 }
@@ -1650,7 +2238,8 @@ function drawBackground() {
   ctx.fillRect(0, 0, innerWidth, innerHeight);
 
   for (let layer = 0; layer < 3; layer++) {
-    const count = 70 + layer * 30;
+    const qualityFactor = settings.quality === "low" ? .38 : settings.quality === "medium" ? .68 : 1;
+    const count = Math.round((70 + layer * 30) * qualityFactor);
     const parallax = .03 + layer * .04;
     for (let i = 0; i < count; i++) {
       const seedX = ((i * 193 + layer * 71) % 997) / 997;
@@ -1940,7 +2529,7 @@ function drawRadar() {
   const localPilots = aiPilots.filter(pilot => pilot.system === state.currentSystem);
   localPilots.forEach(pilot => dot(pilot.x, pilot.y, AI_ROLES[pilot.role].color, 1.6));
   rctx.fillStyle = "#fff"; rctx.beginPath(); rctx.arc(width / 2, height / 2, 2.5, 0, Math.PI * 2); rctx.fill();
-  $("#localCount").textContent = `${world.enemies.length + world.asteroids.length + localPilots.length} 信号`;
+  $("#localCount").textContent = `${world.enemies.length + world.asteroids.length + localPilots.length} ${(UI_TEXT[settings.language] || UI_TEXT.zh).signals}`;
 }
 
 function updateTargetHud() {
@@ -1998,7 +2587,8 @@ function setupEvents() {
       if ($("#mapPanel").classList.contains("hidden")) openMap(); else closeMap();
     }
     if (key === "escape") {
-      if (!$("#mapPanel").classList.contains("hidden")) closeMap();
+      if (!$("#settingsPanel").classList.contains("hidden")) closeSettings();
+      else if (!$("#mapPanel").classList.contains("hidden")) closeMap();
       else if (!$("#helpPanel").classList.contains("hidden")) $("#helpPanel").classList.add("hidden");
     }
   });
@@ -2008,7 +2598,9 @@ function setupEvents() {
   addEventListener("mouseup", event => { if (event.button === 0) mouse.down = false; });
   canvas.addEventListener("contextmenu", event => event.preventDefault());
   addEventListener("pointerdown", event => {
+    audioEngine.ensure();
     if (!event.target.closest("button")) return;
+    audioEngine.play("click");
     const ripple = document.createElement("span");
     ripple.className = "click-ripple";
     ripple.style.left = `${event.clientX}px`;
@@ -2019,13 +2611,24 @@ function setupEvents() {
 
   $("#undockBtn").addEventListener("click", undock);
   $("#repairBtn").addEventListener("click", repairShip);
+  $("#settingsBtn").addEventListener("click", openSettings);
+  $$("[data-open-settings]").forEach(button => button.addEventListener("click", openSettings));
+  $("#closeSettingsBtn").addEventListener("click", closeSettings);
+  $("#settingsDoneBtn").addEventListener("click", closeSettings);
   $("#helpBtn").addEventListener("click", () => { $("#helpPanel").classList.remove("hidden"); paused = true; });
   $("#closeHelpBtn").addEventListener("click", () => { $("#helpPanel").classList.add("hidden"); paused = state.docked; });
   $("#startBtn").addEventListener("click", () => { $("#helpPanel").classList.add("hidden"); if (state.docked) openStation(); });
-  $("#soundBtn").addEventListener("click", () => {
-    soundEnabled = !soundEnabled;
-    $("#soundBtn").textContent = soundEnabled ? "♪" : "×";
-    toast(soundEnabled ? "声音已开启" : "声音已关闭");
+  $$("[data-ui-size-choice]").forEach(button => button.addEventListener("click", () => setSetting("uiSize", button.dataset.uiSizeChoice)));
+  $$("[data-font-choice]").forEach(button => button.addEventListener("click", () => setSetting("font", button.dataset.fontChoice)));
+  $$("[data-quality-choice]").forEach(button => button.addEventListener("click", () => setSetting("quality", button.dataset.qualityChoice)));
+  $$("[data-language-choice]").forEach(button => button.addEventListener("click", () => setSetting("language", button.dataset.languageChoice)));
+  $("#masterVolume").addEventListener("input", event => setSetting("masterVolume", Number(event.target.value)));
+  $("#musicVolume").addEventListener("input", event => setSetting("musicVolume", Number(event.target.value)));
+  $("#sfxVolume").addEventListener("input", event => setSetting("sfxVolume", Number(event.target.value), true));
+  $("#musicToggle").addEventListener("click", () => setSetting("musicEnabled", !settings.musicEnabled));
+  $("#sfxToggle").addEventListener("click", () => {
+    setSetting("sfxEnabled", !settings.sfxEnabled);
+    if (settings.sfxEnabled) { audioEngine.ensure(); audioEngine.play("trade"); }
   });
   $("#aiCountSelect").addEventListener("change", event => {
     createAIPilots(Number(event.target.value));
@@ -2048,11 +2651,8 @@ function setupEvents() {
       acceptContract(CONTRACT_LIBRARY[nextIndex].id);
     } else acceptContract(CONTRACT_LIBRARY[0].id);
   });
-  $$(".station-tabs button").forEach(button => button.addEventListener("click", () => {
-    $$(".station-tabs button").forEach(item => item.classList.toggle("active", item === button));
-    $$(".station-tab").forEach(tab => tab.classList.toggle("active", tab.id === `${button.dataset.stationTab}Tab`));
-    renderStation();
-  }));
+  $$(".station-tabs button").forEach(button => button.addEventListener("click", () => activateStationTab(button.dataset.stationTab)));
+  $$("[data-hub-module]").forEach(button => button.addEventListener("click", () => openHubModule(button.dataset.hubModule)));
   $$("[data-market-mode]").forEach(button => button.addEventListener("click", () => {
     marketMode = button.dataset.marketMode;
     $$("[data-market-mode]").forEach(item => item.classList.toggle("active", item === button));
@@ -2091,6 +2691,7 @@ function init() {
   resize();
   setupEvents();
   resetWorld();
+  applySettings();
   updateHud();
   if (state.docked) openStation();
   if (!localStorage.getItem("stellarFrontierSeenHelp")) {
@@ -2108,6 +2709,8 @@ window.__game = {
   get aiPilots() { return aiPilots; },
   get mining() { return mining; },
   get pve() { return pve; },
+  get settings() { return settings; },
+  get audioEngine() { return audioEngine; },
   systems: SYSTEMS,
   goods: GOODS,
   undock,

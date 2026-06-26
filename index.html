@@ -7,7 +7,7 @@
   <title>星际商路：边境纪元</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-ui-size="large">
   <div id="app">
     <canvas id="gameCanvas"></canvas>
 
@@ -31,8 +31,8 @@
         <b id="aiOnlineCount">0 在线</b>
       </label>
       <div class="wallet"><span>账户余额</span><strong><b id="credits">0</b> ISK</strong></div>
+      <button id="settingsBtn" class="icon-btn" title="游戏设置" aria-label="游戏设置">⚙</button>
       <button id="helpBtn" class="icon-btn" title="操作说明">?</button>
-      <button id="soundBtn" class="icon-btn" title="声音">♪</button>
     </header>
 
     <aside class="left-hud">
@@ -108,19 +108,74 @@
     <section id="stationPanel" class="station-panel hidden">
       <div class="station-shell">
         <header class="station-header">
-          <div><p>DOCKED · LOCAL MARKET</p><h1 id="stationTitle">晨星贸易站</h1><span id="stationTrait">核心区综合贸易枢纽</span></div>
+          <div><p id="stationModeLabel">DOCKED · STARPORT HUB</p><h1 id="stationTitle">晨星贸易站</h1><span id="stationTrait">核心区综合贸易枢纽</span></div>
           <div class="station-actions">
+            <button class="button subtle" data-open-settings>设置</button>
             <button id="repairBtn" class="button subtle">维修舰船 <b id="repairCost">0</b></button>
             <button id="undockBtn" class="button primary">离站</button>
           </div>
         </header>
         <nav class="station-tabs">
-          <button class="active" data-station-tab="market">地区市场</button>
+          <button class="active" data-station-tab="hub">星港中枢</button>
+          <button data-station-tab="market">地区市场</button>
           <button data-station-tab="shipyard">舰船改装</button>
           <button data-station-tab="contracts">合约中心</button>
+          <button data-station-tab="hangar">仓库货舱</button>
           <button data-station-tab="intel">区域情报</button>
         </nav>
-        <div id="marketTab" class="station-tab active">
+        <div id="hubTab" class="station-tab station-hub active">
+          <div class="station-hub-layout">
+            <section class="station-visual">
+              <div class="station-viewport">
+                <div class="station-ring ring-a"></div>
+                <div class="station-ring ring-b"></div>
+                <div class="hangar-gate"></div>
+                <div class="docked-ship">
+                  <i class="ship-nose"></i><i class="ship-core"></i><i class="ship-wing left"></i><i class="ship-wing right"></i>
+                </div>
+                <div class="dock-beam"></div>
+              </div>
+              <div class="dock-status-grid">
+                <div><span id="hubSecurityLabel">安全等级</span><b id="hubSecurity">1.0</b></div>
+                <div><span id="hubTaxLabel">交易税率</span><b id="hubTax">2.5%</b></div>
+                <div><span id="hubThreatLabel">周边威胁</span><b id="hubThreat">稳定</b></div>
+                <div><span id="hubTrafficLabel">本地交通</span><b id="hubTraffic">0 艘</b></div>
+              </div>
+            </section>
+            <section class="station-command">
+              <div class="command-briefing">
+                <p id="hubKicker">STATION COMMAND</p>
+                <h2 id="hubHeadline">欢迎回港，飞行员</h2>
+                <span id="hubBriefing">对接臂已锁定，市场、维修、合约与航线情报均已同步。</span>
+              </div>
+              <div class="module-grid">
+                <button class="station-module highlight" data-hub-module="market">
+                  <i>◇</i><span><strong data-module-title="market">市场交易所</strong><small data-module-copy="market">买入、出售、查看买卖盘和价格走势</small></span><b data-module-status="market">在线</b>
+                </button>
+                <button class="station-module" data-hub-module="shipyard">
+                  <i>⬡</i><span><strong data-module-title="shipyard">舰船维护区</strong><small data-module-copy="shipyard">维修护盾与装甲，升级武器和货舱</small></span><b data-module-status="shipyard">待检</b>
+                </button>
+                <button class="station-module" data-hub-module="contracts">
+                  <i>▣</i><span><strong data-module-title="contracts">任务大厅</strong><small data-module-copy="contracts">领取运输、采矿、清剿与贸易合约</small></span><b data-module-status="contracts">可用</b>
+                </button>
+                <button class="station-module" data-hub-module="hangar">
+                  <i>▤</i><span><strong data-module-title="hangar">仓库货舱</strong><small data-module-copy="hangar">查看库存、货舱占用与本地估值</small></span><b data-module-status="hangar">同步</b>
+                </button>
+                <button class="station-module" data-hub-module="map">
+                  <i>✦</i><span><strong data-module-title="map">星图导航</strong><small data-module-copy="map">查看星系安全、航线和贸易机会</small></span><b data-module-status="map">跃迁</b>
+                </button>
+                <button class="station-module" data-hub-module="intel">
+                  <i>⌁</i><span><strong data-module-title="intel">情报终端</strong><small data-module-copy="intel">地区价差、风险报告与海盗活动</small></span><b data-module-status="intel">更新</b>
+                </button>
+                <button class="station-module settings-module" data-hub-module="settings">
+                  <i>⚙</i><span><strong data-module-title="settings">系统设置</strong><small data-module-copy="settings">字体、清晰度、语言、音乐和音效</small></span><b data-module-status="settings">偏好</b>
+                </button>
+              </div>
+              <div id="hubNewsFeed" class="station-news-feed"></div>
+            </section>
+          </div>
+        </div>
+        <div id="marketTab" class="station-tab">
           <div class="market-toolbar">
             <div><p>区域独立库存 · 实物必须运输 · AI玩家实时成交</p><strong id="marketSummary">市场运行正常</strong></div>
             <div class="market-mode"><button class="active" data-market-mode="buy">购买</button><button data-market-mode="sell">出售</button></div>
@@ -188,6 +243,31 @@
           <div class="contracts-head"><div><p>AVAILABLE CONTRACTS</p><h2>本地合约</h2></div><span>完成合约可获得 ISK 与声望</span></div>
           <div id="contractGrid" class="contract-grid"></div>
         </div>
+        <div id="hangarTab" class="station-tab">
+          <div class="hangar-layout">
+            <section class="hangar-card manifest-card">
+              <p>CARGO MANIFEST</p>
+              <h2 id="hangarTitle">仓库与货舱</h2>
+              <div id="hangarCargoGrid" class="hangar-cargo-grid"></div>
+            </section>
+            <aside class="hangar-side">
+              <section class="hangar-card">
+                <p>HOLD STATUS</p>
+                <div class="hangar-meter-head"><span id="hangarUsageLabel">货舱占用</span><b id="hangarCargoUsage">0 / 30</b></div>
+                <div class="hangar-meter"><i id="hangarCargoBar"></i></div>
+                <div class="hangar-value"><span id="hangarValueLabel">本地卖出估值</span><strong id="hangarHoldValue">0 ISK</strong></div>
+              </section>
+              <section class="hangar-card">
+                <p>SHIP READOUT</p>
+                <div id="hangarShipStats" class="hangar-ship-stats"></div>
+              </section>
+              <section class="hangar-card">
+                <p>STATION NOTICE</p>
+                <div id="hangarNotice" class="hangar-notice">货物会随玩家移动，地区市场价格会根据库存、AI交易与敌对活动波动。</div>
+              </section>
+            </aside>
+          </div>
+        </div>
         <div id="intelTab" class="station-tab">
           <div class="intel-grid">
             <article><p>MARKET INTEL</p><h2>地区价差</h2><div id="tradeIntel"></div></article>
@@ -226,12 +306,107 @@
       </div>
     </section>
 
+    <section id="settingsPanel" class="modal hidden">
+      <div class="settings-shell">
+        <button id="closeSettingsBtn" class="icon-btn close">×</button>
+        <p>GAME SETTINGS</p>
+        <h2>游戏设置</h2>
+
+        <div class="settings-list">
+          <section class="setting-row">
+            <div>
+              <strong>界面字号</strong>
+              <span>调整HUD、市场和说明文字的大小。</span>
+            </div>
+            <div class="segmented-control" id="uiSizeOptions">
+              <button data-ui-size-choice="standard">标准</button>
+              <button data-ui-size-choice="large">大号</button>
+              <button data-ui-size-choice="xlarge">特大</button>
+            </div>
+          </section>
+
+          <section class="setting-row">
+            <div>
+              <strong>字体风格</strong>
+              <span>选择更适合阅读或更有科幻感的字体。</span>
+            </div>
+            <div class="segmented-control" id="fontOptions">
+              <button data-font-choice="sans">清晰</button>
+              <button data-font-choice="rounded">圆润</button>
+              <button data-font-choice="mono">终端</button>
+            </div>
+          </section>
+
+          <section class="setting-row">
+            <div>
+              <strong>画面质量</strong>
+              <span>调整粒子、星空密度、光晕效果和渲染分辨率。</span>
+            </div>
+            <div class="segmented-control" id="qualityOptions">
+              <button data-quality-choice="low">流畅</button>
+              <button data-quality-choice="medium">均衡</button>
+              <button data-quality-choice="high">精细</button>
+            </div>
+          </section>
+
+          <section class="setting-row">
+            <div>
+              <strong>语言</strong>
+              <span>切换游戏核心界面语言。</span>
+            </div>
+            <div class="segmented-control" id="languageOptions">
+              <button data-language-choice="zh">简体中文</button>
+              <button data-language-choice="en">English</button>
+            </div>
+          </section>
+
+          <section class="setting-row volume-setting">
+            <div>
+              <strong>主音量</strong>
+              <span>控制游戏的整体音量。</span>
+            </div>
+            <label class="volume-control"><input id="masterVolume" type="range" min="0" max="100" value="65"><b id="masterVolumeValue">65%</b></label>
+          </section>
+
+          <section class="setting-row volume-setting">
+            <div>
+              <strong>背景音乐</strong>
+              <span>程序化生成的太空氛围音乐。</span>
+            </div>
+            <div class="audio-setting-control">
+              <button id="musicToggle" class="toggle-button active" aria-pressed="true"><i></i><span>开启</span></button>
+              <label class="volume-control compact"><input id="musicVolume" type="range" min="0" max="100" value="45"><b id="musicVolumeValue">45%</b></label>
+            </div>
+          </section>
+
+          <section class="setting-row volume-setting">
+            <div>
+              <strong>游戏音效</strong>
+              <span>武器、护盾、采矿、交易、跃迁和按钮音效。</span>
+            </div>
+            <div class="audio-setting-control">
+              <button id="sfxToggle" class="toggle-button active" aria-pressed="true"><i></i><span>开启</span></button>
+              <label class="volume-control compact"><input id="sfxVolume" type="range" min="0" max="100" value="70"><b id="sfxVolumeValue">70%</b></label>
+            </div>
+          </section>
+        </div>
+
+        <div class="settings-preview">
+          <span>预览</span>
+          <strong>区域市场价格出现波动</strong>
+          <p>海盗活动正在影响运输效率与当地补给价格。</p>
+        </div>
+
+        <button id="settingsDoneBtn" class="button primary settings-done">完成</button>
+      </div>
+    </section>
+
     <section id="deathPanel" class="modal hidden">
       <div class="death-shell"><p>SHIP DESTROYED</p><h2>舰船已损毁</h2><span id="deathReport">保险公司已回收逃生舱。</span><button id="respawnBtn" class="button primary">返回晨星贸易站</button></div>
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">DYNAMIC PVE · BUILD 0.3</div>
+    <div class="version">STARPORT HUB · BUILD 0.32</div>
   </div>
   <script src="game.js"></script>
 </body>

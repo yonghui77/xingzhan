@@ -31,6 +31,14 @@ let browser;
   await page.waitForFunction(() => !document.querySelector("#stationPanel").classList.contains("hidden"));
   console.log("step:station");
 
+  const hubState = await page.evaluate(() => ({
+    hubActive: document.querySelector("#hubTab").classList.contains("active"),
+    modules: document.querySelectorAll("[data-hub-module]").length,
+    headline: document.querySelector("#hubHeadline").textContent
+  }));
+  await page.click('[data-hub-module="market"]');
+  await page.waitForFunction(() => document.querySelector("#marketTab").classList.contains("active"));
+
   const initial = await page.evaluate(() => ({
     credits: window.__game.state.credits,
     docked: window.__game.state.docked,
@@ -109,6 +117,8 @@ let browser;
   await page.evaluate(() => window.__game.dock());
   await page.waitForFunction(() => window.__game.state.docked);
   console.log("step:docked");
+  await page.click('[data-hub-module="market"]');
+  await page.waitForFunction(() => document.querySelector("#marketTab").classList.contains("active"));
   const beforeSellCredits = await page.evaluate(() => window.__game.state.credits);
   await page.click('[data-market-mode="sell"]');
   await page.fill("#tradeQuantity", "1");
@@ -145,6 +155,7 @@ let browser;
   await page.screenshot({ path: path.join(__dirname, "map-smoke.png"), fullPage: true });
 
   if (!helpVisible) throw new Error("First-run help was not shown");
+  if (!hubState.hubActive || hubState.modules < 7) throw new Error(`Station hub failed: ${JSON.stringify(hubState)}`);
   if (!initial.docked || initial.system !== "aurora" || initial.marketItems !== 5 || initial.sellOrders !== 6 || initial.aiCount !== 16) throw new Error(`Invalid initial state: ${JSON.stringify(initial)}`);
   if (!(afterBuy.credits < initial.credits) || afterBuy.ore !== 1) throw new Error(`Market buy failed: ${JSON.stringify(afterBuy)}`);
   if (afterMine <= afterBuy.ore) throw new Error(`Mining did not add cargo: ${afterMine}`);
@@ -159,7 +170,7 @@ let browser;
   if (errors.length) throw new Error(`Browser errors: ${errors.join(" | ")}`);
 
   console.log(JSON.stringify({
-    helpVisible, initial, afterBuy, afterMine, kills, afterJump, shieldVisual, afterSell, weaponLevel, aiState, mapNodes,
+    helpVisible, hubState, initial, afterBuy, afterMine, kills, afterJump, shieldVisual, afterSell, weaponLevel, aiState, mapNodes,
     screenshots: ["mining-smoke.png", "flight-smoke.png", "market-v2-smoke.png", "game-smoke.png", "map-smoke.png"].map(file => path.join(__dirname, file))
   }));
   await browser.close();
