@@ -36,7 +36,21 @@ let browser;
     modules: document.querySelectorAll("[data-hub-module]").length,
     headline: document.querySelector("#hubHeadline").textContent,
     storyPulse: document.querySelector("#hubStoryPulse").innerText,
-    bodyScroll: document.scrollingElement.scrollHeight > innerHeight
+    bodyScroll: document.scrollingElement.scrollHeight > innerHeight,
+    shipModel: (() => {
+      const rect = selector => {
+        const r = document.querySelector(selector).getBoundingClientRect();
+        return { x: Math.round(r.x), w: Math.round(r.width), right: Math.round(r.right) };
+      };
+      const leftWing = rect(".docked-ship .ship-wing.left");
+      const rightWing = rect(".docked-ship .ship-wing.right");
+      const core = rect(".docked-ship .ship-core");
+      return {
+        wingWidthOk: leftWing.w <= 54 && rightWing.w <= 54,
+        wingAttachedOk: leftWing.right >= core.x - 20 && rightWing.x <= core.right + 20,
+        symmetricOk: Math.abs((core.x - leftWing.x) - (rightWing.right - core.right)) <= 18
+      };
+    })()
   }));
   await page.click('[data-hub-module="market"]');
   await page.waitForFunction(() => document.querySelector("#marketTab").classList.contains("active"));
@@ -158,6 +172,7 @@ let browser;
 
   if (!helpVisible) throw new Error("First-run help was not shown");
   if (!hubState.hubActive || hubState.modules < 7 || !hubState.storyPulse.includes("主线信标") || hubState.bodyScroll) throw new Error(`Station hub failed: ${JSON.stringify(hubState)}`);
+  if (!hubState.shipModel.wingWidthOk || !hubState.shipModel.wingAttachedOk || !hubState.shipModel.symmetricOk) throw new Error(`Docked ship model failed: ${JSON.stringify(hubState.shipModel)}`);
   if (!initial.docked || initial.system !== "aurora" || initial.marketItems !== 5 || initial.sellOrders !== 6 || initial.aiCount !== 16) throw new Error(`Invalid initial state: ${JSON.stringify(initial)}`);
   if (!(afterBuy.credits < initial.credits) || afterBuy.ore !== 1) throw new Error(`Market buy failed: ${JSON.stringify(afterBuy)}`);
   if (afterMine <= afterBuy.ore) throw new Error(`Mining did not add cargo: ${afterMine}`);

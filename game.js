@@ -224,6 +224,7 @@ const defaultState = () => ({
   playSeconds: 0,
   marketMemory: {},
   stationStorage: {},
+  playerOrders: [],
   story: { dockedOnce: true, viewedRemoteMarket: false },
   tutorial: { active: true, completed: false, step: 0, baselines: {}, enteredStep: null }
 });
@@ -245,6 +246,8 @@ let aiEconomyTimer = 0;
 let selectedMarketItem = "ore";
 let selectedMarketSystem = null;
 let marketSearchText = "";
+let marketChartHover = null;
+let marketChartCache = null;
 let shieldImpact = 0;
 let shieldHitAngle = 0;
 const mining = { targetId: null, active: false };
@@ -422,6 +425,7 @@ function loadGame() {
       markets: saved.markets || {},
       marketMemory: saved.marketMemory || {},
       stationStorage: saved.stationStorage || {},
+      playerOrders: Array.isArray(saved.playerOrders) ? saved.playerOrders : [],
       visitedSystems: saved.visitedSystems || base.visitedSystems,
       story: { ...base.story, ...(saved.story || {}) },
       tutorial
@@ -828,6 +832,7 @@ function simulateMarkets(intensity = 1) {
       if (market.history.length > 24) market.history.shift();
     });
   });
+  matchPlayerOrders(intensity);
 }
 
 function createAIPilots(count = state.aiCount) {
@@ -1766,6 +1771,106 @@ function sellItem(itemKey, requested) {
   saveGame();
 }
 
+function playerSellOrders(systemId = state.currentSystem, itemKey = null) {
+  if (!Array.isArray(state.playerOrders)) state.playerOrders = [];
+  return state.playerOrders
+    .filter(order => order.type === "sell" && order.systemId === systemId && (!itemKey || order.itemKey === itemKey) && order.amount > 0)
+    .sort((a, b) => a.price - b.price || a.createdAt - b.createdAt);
+}
+
+function settleSellOrder(order, fillAmount = order.amount, source = "市场撮合") {
+  const amount = Math.max(0, Math.min(order.amount, Math.floor(fillAmount)));
+  if (amount <= 0) return 0;
+  const gross = amount * order.price;
+  const fee = Math.max(1, Math.round(gross * .025));
+  state.credits += gross - fee;
+  state.stats.tradeRevenue += gross - fee;
+  order.amount -= amount;
+  recordAITrade({ name: source }, order.itemKey, amount, "buy", order.systemId, order.price);
+  addFeed(`卖单成交 <b>${localizedGood(order.itemKey).name}</b> × ${amount}，单价 ${formatNumber(order.price)} ISK，收入 ${formatNumber(gross - fee)} ISK。`);
+  return amount;
+}
+
+function matchPlayerOrders(intensity = 1) {
+  if (!Array.isArray(state.playerOrders) || !state.playerOrders.length) return;
+  state.playerOrders.forEach(order => {
+    if (order.type !== "sell" || order.amount <= 0 || !state.markets[order.systemId]?.[order.itemKey]) return;
+    const bestBid = marketPrice(order.systemId, order.itemKey, "sell");
+    const demandLift = (state.systemThreat[order.systemId] || 0) > 45 && ["ammo", "fuel", "salvage"].includes(order.itemKey) ? 1.03 : 1;
+    if (order.price <= bestBid * demandLift) {
+      settleSellOrder(order, Math.max(1, Math.ceil(order.amount * clamp(.45 * intensity, .25, 1))), "交易所撮合");
+    }
+  });
+  state.playerOrders = state.playerOrders.filter(order => order.amount > 0);
+}
+
+function placeLimitSellOrder(itemKey, requested, limitPrice) {
+  const amount = Math.max(0, Math.min(requested === "max" ? localItemAmount(itemKey) : requested, localItemAmount(itemKey)));
+  const price = Math.max(1, Math.round(Number(limitPrice) || 0));
+  if (amount <= 0) return toast("本地没有该商品");
+  if (!Number.isFinite(price) || price <= 0) return toast("请输入有效出售单价");
+  const bestBid = marketPrice(state.currentSystem, itemKey, "sell");
+  if (price <= bestBid) {
+    const previousPrice = $("#limitSellPrice")?.value;
+    sellItemAtPrice(itemKey, amount, bestBid, `限价单即时成交，按当前买盘 ${formatNumber(bestBid)} ISK 结算。`);
+    if ($("#limitSellPrice")) $("#limitSellPrice").value = previousPrice;
+    return;
+  }
+  const removed = removeLocalItems(itemKey, amount);
+  if (removed <= 0) return toast("本地没有该商品");
+  if (!Array.isArray(state.playerOrders)) state.playerOrders = [];
+  state.playerOrders.unshift({
+    id: `sell-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type: "sell",
+    systemId: state.currentSystem,
+    itemKey,
+    amount: removed,
+    originalAmount: removed,
+    price,
+    createdAt: state.playSeconds
+  });
+  addFeed(`挂出卖单 <b>${localizedGood(itemKey).name}</b> × ${removed}，单价 ${formatNumber(price)} ISK。`);
+  toast(`已挂单：${localizedGood(itemKey).name} × ${removed} @ ${formatNumber(price)} ISK`);
+  audioEngine.play("trade");
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function sellItemAtPrice(itemKey, requested, unitPrice, note = "") {
+  const owned = localItemAmount(itemKey);
+  const amount = Math.max(0, Math.min(requested === "max" ? owned : requested, owned));
+  if (amount <= 0) return toast("本地没有该商品");
+  const market = state.markets[state.currentSystem][itemKey];
+  const price = Math.max(1, Math.round(unitPrice));
+  const gross = amount * price;
+  const fee = Math.max(1, Math.round(gross * .025));
+  removeLocalItems(itemKey, amount);
+  state.credits += gross - fee;
+  state.stats.tradeRevenue += gross - fee;
+  market.stock += amount;
+  market.priceFactor = clamp(market.priceFactor * (1 - amount / (SYSTEMS[state.currentSystem].stock[itemKey] * 22)), .3, 3.5);
+  addFeed(`售出 ${localizedGood(itemKey).name} × ${amount}，单价 ${formatNumber(price)} ISK，收入 ${formatNumber(gross - fee)} ISK。${note ? ` ${note}` : ""}`);
+  flashWallet();
+  audioEngine.play("trade");
+  renderStation();
+  updateHud();
+  updateMission();
+  saveGame();
+}
+
+function cancelPlayerOrder(orderId) {
+  if (!Array.isArray(state.playerOrders)) return;
+  const order = state.playerOrders.find(item => item.id === orderId);
+  if (!order) return;
+  addToStationStorage(order.itemKey, order.amount, order.systemId);
+  state.playerOrders = state.playerOrders.filter(item => item.id !== orderId);
+  toast(`已撤单，货物退回 ${localizedSystem(order.systemId).station} 仓库`);
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
 function repairShip() {
   const stats = shipStats();
   const missingHull = stats.maxHull - state.hull;
@@ -2068,6 +2173,24 @@ function renderHub() {
   const signals = collectMarketSignals();
   const primarySignal = signals[0];
   const storyFocus = currentStoryFocus();
+  const upgradeLevel = Object.values(state.upgrades || {}).reduce((sum, value) => sum + value, 0);
+  const shieldPct = Math.round((state.shield / Math.max(1, stats.maxShield)) * 100);
+  const hullPct = Math.round((state.hull / Math.max(1, stats.maxHull)) * 100);
+  const rankLabel = settings.language === "en"
+    ? `Frontier License · MK ${String(upgradeLevel + 1).padStart(2, "0")}`
+    : `拓荒者执照 · MK ${String(upgradeLevel + 1).padStart(2, "0")}`;
+
+  if ($("#pilotCallsign")) $("#pilotCallsign").textContent = settings.language === "en" ? "Frontier Pilot" : "边境飞行员";
+  if ($("#pilotRank")) $("#pilotRank").textContent = rankLabel;
+  if ($("#pilotWallet")) $("#pilotWallet").textContent = `${formatNumber(state.credits)} ISK`;
+  if ($("#pilotCargo")) $("#pilotCargo").textContent = `${cargoUsedNow} / ${stats.cargo}`;
+  if ($("#hubShipClass")) $("#hubShipClass").textContent = settings.language === "en" ? `PIONEER CLASS · MK ${upgradeLevel + 1}` : `拓荒者级 · MK ${upgradeLevel + 1}`;
+  if ($("#hubShipIntegrity")) $("#hubShipIntegrity").textContent = settings.language === "en" ? `Shield ${shieldPct}% · Hull ${hullPct}%` : `护盾 ${shieldPct}% · 装甲 ${hullPct}%`;
+  const hubUndock = $("#hubUndockBtn");
+  if (hubUndock) {
+    hubUndock.querySelector("span").textContent = settings.language === "en" ? "Launch" : "离站出航";
+    hubUndock.querySelector("strong").textContent = settings.language === "en" ? "UNDOCK" : "UNDOCK";
+  }
 
   $("#hubKicker").textContent = text.stationCommand;
   $("#hubHeadline").textContent = settings.language === "en" ? `Docked at ${label.station}` : `已停靠：${label.station}`;
@@ -2258,11 +2381,16 @@ function renderOrderRows(selector, orders, side) {
   const max = Math.max(...orders.map(order => order.amount));
   $(selector).innerHTML = orders.map(order => {
     cumulative += order.amount;
-    return `<div class="order-row" style="--depth:${order.amount / max * 100}%" data-order-price="${order.price}">
-      <span>${formatNumber(order.amount)}</span><span>${formatNumber(order.price)}</span><span>${formatNumber(cumulative)}</span>
+    return `<div class="order-row ${order.owner === "player" ? "player-order" : ""}" style="--depth:${order.amount / max * 100}%" data-order-price="${order.price}" data-order-id="${order.id || ""}">
+      <span>${formatNumber(order.amount)}${order.owner === "player" ? " · 你" : ""}</span><span>${formatNumber(order.price)}</span><span>${formatNumber(cumulative)}</span>
     </div>`;
   }).join("");
   $(`${selector}`).querySelectorAll(".order-row").forEach(row => row.addEventListener("click", () => {
+    if (side === "sell" && marketMode === "sell" && $("#limitSellPrice")) {
+      $("#limitSellPrice").value = String(Math.max(1, Math.round(Number(row.dataset.orderPrice) || 1)));
+      $("#limitSellPrice").dataset.edited = "1";
+      updateTradeTicket();
+    }
     toast(`${side === "sell" ? "卖单" : "买单"}价格 ${formatNumber(Number(row.dataset.orderPrice))} ISK`);
   }));
 }
@@ -2316,9 +2444,10 @@ function drawMarketChart(itemKey) {
   const width = rect.width;
   const height = rect.height;
   const pad = { l: 32, r: 8, t: 12, b: 20 };
-  const history = [...state.markets[state.currentSystem][itemKey].history];
+  const systemId = marketViewSystem();
+  const history = [...state.markets[systemId][itemKey].history];
   while (history.length < 24) history.unshift(history[0] || GOODS[itemKey].base);
-  history[history.length - 1] = marketPrice(state.currentSystem, itemKey);
+  history[history.length - 1] = marketPrice(systemId, itemKey);
   const min = Math.min(...history) * .94;
   const max = Math.max(...history) * 1.06;
   c.clearRect(0, 0, width, height);
@@ -2333,11 +2462,22 @@ function drawMarketChart(itemKey) {
   const color = GOODS[itemKey].color;
   const points = history.map((value, index) => ({
     x: pad.l + (width - pad.l - pad.r) * index / (history.length - 1),
-    y: pad.t + (height - pad.t - pad.b) * (1 - (value - min) / Math.max(1, max - min))
+    y: pad.t + (height - pad.t - pad.b) * (1 - (value - min) / Math.max(1, max - min)),
+    value,
+    index
   }));
+  const stock = Math.floor(state.markets[systemId][itemKey].stock);
+  marketChartCache = { systemId, itemKey, history, points, pad, width, height, min, max, stock };
   const gradient = c.createLinearGradient(0, pad.t, 0, height - pad.b);
   gradient.addColorStop(0, `${color}35`);
   gradient.addColorStop(1, `${color}00`);
+  c.fillStyle = "rgba(137,165,215,.08)";
+  points.forEach((point, index) => {
+    const previous = history[index - 1] || point.value;
+    const volumeSeed = Math.abs(point.value - previous) / Math.max(1, point.value) + (stock % 11) / 80;
+    const barHeight = clamp(volumeSeed * 70, 5, 34);
+    c.fillRect(point.x - 2, height - pad.b - barHeight, 4, barHeight);
+  });
   c.beginPath();
   points.forEach((point, index) => index ? c.lineTo(point.x, point.y) : c.moveTo(point.x, point.y));
   c.lineTo(points[points.length - 1].x, height - pad.b);
@@ -2353,6 +2493,68 @@ function drawMarketChart(itemKey) {
   c.shadowBlur = 7;
   c.stroke();
   c.shadowBlur = 0;
+  if (marketChartHover?.active && marketChartHover.systemId === systemId && marketChartHover.itemKey === itemKey) {
+    const point = points[marketChartHover.index] || points[points.length - 1];
+    c.save();
+    c.strokeStyle = "rgba(164,243,255,.45)";
+    c.lineWidth = 1;
+    c.setLineDash([3, 5]);
+    c.beginPath(); c.moveTo(point.x, pad.t); c.lineTo(point.x, height - pad.b); c.stroke();
+    c.beginPath(); c.moveTo(pad.l, point.y); c.lineTo(width - pad.r, point.y); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = "#eaffff";
+    c.strokeStyle = color;
+    c.lineWidth = 2;
+    c.beginPath(); c.arc(point.x, point.y, 4.5, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.restore();
+    updateChartTooltip(point);
+  } else {
+    $("#chartTooltip")?.classList.add("hidden");
+  }
+}
+
+function updateChartTooltip(point) {
+  const tooltip = $("#chartTooltip");
+  if (!tooltip || !marketChartCache) return;
+  const previous = marketChartCache.history[point.index - 1] || point.value;
+  const change = previous ? (point.value / previous - 1) * 100 : 0;
+  const period = point.index - marketChartCache.history.length + 1;
+  tooltip.classList.remove("hidden");
+  tooltip.style.left = `${clamp(point.x + 12, 8, marketChartCache.width - 150)}px`;
+  tooltip.style.top = `${clamp(point.y - 58, 8, marketChartCache.height - 86)}px`;
+  tooltip.innerHTML = `
+    <b>${localizedSystem(marketChartCache.systemId).station}</b>
+    <span>${settings.language === "en" ? "Cycle" : "周期"} ${period >= 0 ? (settings.language === "en" ? "Now" : "当前") : period}</span>
+    <strong>${formatNumber(Math.round(point.value))} ISK</strong>
+    <em class="${change > 0 ? "up" : change < 0 ? "down" : ""}">${change >= 0 ? "+" : ""}${change.toFixed(2)}%</em>
+    <small>${settings.language === "en" ? "Stock" : "库存"} ${formatNumber(marketChartCache.stock)}</small>`;
+}
+
+function hideChartTooltip() {
+  marketChartHover = null;
+  $("#chartTooltip")?.classList.add("hidden");
+  if (GOODS[selectedMarketItem]) requestAnimationFrame(() => drawMarketChart(selectedMarketItem));
+}
+
+function handleChartHover(event) {
+  if (!marketChartCache || marketChartCache.itemKey !== selectedMarketItem || marketChartCache.systemId !== marketViewSystem()) {
+    drawMarketChart(selectedMarketItem);
+  }
+  if (!marketChartCache) return;
+  const chart = $("#marketChart");
+  const rect = chart.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const nearest = marketChartCache.points.reduce((best, point, index) => {
+    const distance = Math.abs(point.x - x);
+    return distance < best.distance ? { index, distance } : best;
+  }, { index: 0, distance: Infinity });
+  marketChartHover = {
+    active: true,
+    index: nearest.index,
+    systemId: marketChartCache.systemId,
+    itemKey: marketChartCache.itemKey
+  };
+  requestAnimationFrame(() => drawMarketChart(marketChartCache.itemKey));
 }
 
 function renderMarketSystemPicker() {
@@ -2440,21 +2642,40 @@ function renderMarketDetail() {
     : (settings.language === "en" ? `Dock at ${localizedSystem(systemId).station} to trade` : `需前往 ${localizedSystem(systemId).station} 交易`);
   $("#selectedOwned").textContent = settings.language === "en" ? `${localItemAmount(itemKey)} local units` : `${localItemAmount(itemKey)} 本地单位`;
   $("#executeTradeBtn").textContent = local
-    ? (settings.language === "en" ? (marketMode === "buy" ? "Confirm Purchase" : "Confirm Sale") : (marketMode === "buy" ? "确认购买" : "确认出售"))
+    ? (settings.language === "en" ? (marketMode === "buy" ? "Confirm Purchase" : "Submit Sell Order") : (marketMode === "buy" ? "确认购买" : "提交卖单"))
     : (settings.language === "en" ? "Travel Required" : "需要前往该站");
   $("#executeTradeBtn").classList.toggle("sell", marketMode === "sell");
+  $(".market-ticket")?.classList.toggle("sell-mode", marketMode === "sell");
+  $("#limitSellField")?.classList.toggle("hidden", marketMode !== "sell");
 
   const quantityInput = $("#tradeQuantity");
+  const limitSellInput = $("#limitSellPrice");
+  if (limitSellInput) {
+    const stalePrice = limitSellInput.dataset.item !== itemKey || limitSellInput.dataset.system !== systemId || limitSellInput.dataset.mode !== marketMode;
+    if (stalePrice || !limitSellInput.dataset.edited) {
+      limitSellInput.value = String(sellPrice);
+      limitSellInput.dataset.edited = "";
+    }
+    limitSellInput.dataset.item = itemKey;
+    limitSellInput.dataset.system = systemId;
+    limitSellInput.dataset.mode = marketMode;
+  }
   const maxAmount = Math.max(1, available);
   quantityInput.max = maxAmount;
   quantityInput.value = String(clamp(Number(quantityInput.value) || 1, 1, maxAmount));
   updateTradeTicket();
 
-  const sellOrders = Array.from({ length: 6 }, (_, index) => {
+  const syntheticSellOrders = Array.from({ length: 6 }, (_, index) => {
     const price = buyPrice + index * Math.max(1, Math.round(buyPrice * .012));
     const amount = Math.max(1, Math.round(market.stock * (.035 + index * .013)));
     return { price, amount };
-  }).reverse();
+  });
+  const sellOrders = [...syntheticSellOrders, ...playerSellOrders(systemId, itemKey).map(order => ({
+    price: order.price,
+    amount: order.amount,
+    owner: "player",
+    id: order.id
+  }))].sort((a, b) => b.price - a.price || b.amount - a.amount);
   const buyOrders = Array.from({ length: 6 }, (_, index) => {
     const price = sellPrice - index * Math.max(1, Math.round(sellPrice * .011));
     const amount = Math.max(1, Math.round(SYSTEMS[systemId].stock[itemKey] * (.028 + index * .011)));
@@ -2470,12 +2691,19 @@ function updateTradeTicket() {
   if (!GOODS[selectedMarketItem]) return;
   const amount = Math.max(1, Number($("#tradeQuantity").value) || 1);
   const systemId = marketViewSystem();
-  const price = marketPrice(systemId, selectedMarketItem, marketMode === "buy" ? "buy" : "sell");
+  const bestBid = marketPrice(systemId, selectedMarketItem, "sell");
+  const price = marketMode === "sell"
+    ? Math.max(1, Math.round(Number($("#limitSellPrice")?.value) || bestBid))
+    : marketPrice(systemId, selectedMarketItem, "buy");
   const gross = amount * price;
   const fee = Math.max(1, Math.round(gross * .025));
   $("#tradeTotal").textContent = `${formatNumber(marketMode === "buy" ? gross + fee : gross - fee)} ISK`;
   $("#tradeFee").textContent = canTradeViewedMarket()
-    ? (settings.language === "en" ? `Turnover ${formatNumber(gross)} · Tax ${formatNumber(fee)}` : `成交额 ${formatNumber(gross)} · 税费 ${formatNumber(fee)}`)
+    ? (marketMode === "sell"
+      ? (price <= bestBid
+        ? (settings.language === "en" ? `Immediate fill at bid ${formatNumber(bestBid)} · Tax ${formatNumber(fee)}` : `可即时成交 · 当前买盘 ${formatNumber(bestBid)} · 税费 ${formatNumber(fee)}`)
+        : (settings.language === "en" ? `Limit ask ${formatNumber(price)} · waits for matching` : `限价挂单 ${formatNumber(price)} · 等待撮合`))
+      : (settings.language === "en" ? `Turnover ${formatNumber(gross)} · Tax ${formatNumber(fee)}` : `成交额 ${formatNumber(gross)} · 税费 ${formatNumber(fee)}`))
     : (settings.language === "en" ? "Quote only · physical travel required" : "仅行情 · 需实体运输前往");
   $("#executeTradeBtn").disabled = !canTradeViewedMarket();
 }
@@ -2484,7 +2712,7 @@ function executeMarketTrade() {
   if (!canTradeViewedMarket()) return toast("远程市场只能查看行情，必须驾驶战舰前往该空间站交易");
   const amount = Math.max(1, Math.floor(Number($("#tradeQuantity").value) || 1));
   if (marketMode === "buy") buyItem(selectedMarketItem, amount);
-  else sellItem(selectedMarketItem, amount);
+  else placeLimitSellOrder(selectedMarketItem, amount, Number($("#limitSellPrice")?.value));
 }
 
 function renderMarketSidebar() {
@@ -2506,6 +2734,15 @@ function renderMarketSidebar() {
     const age = live ? (settings.language === "en" ? "Live" : "实时") : marketMemoryAge(memory);
     return `<div class="regional-row ${viewed ? "active" : ""}"><span>${localizedSystem(id).station}<small>${age}</small></span><b>${price}</b></div>`;
   }).join("");
+  const orders = playerSellOrders(marketViewSystem(), selectedMarketItem);
+  $("#playerOrderCount").textContent = settings.language === "en" ? `${orders.length} orders` : `${orders.length} 单`;
+  $("#playerOrdersPanel").innerHTML = orders.length ? orders.map(order => `
+    <div class="player-order-row">
+      <span>${localizedGood(order.itemKey).name}<small>${formatNumber(order.amount)} × ${formatNumber(order.price)} ISK</small></span>
+      <button data-cancel-order="${order.id}">${settings.language === "en" ? "Cancel" : "撤单"}</button>
+    </div>
+  `).join("") : `<div class="player-order-empty">${settings.language === "en" ? "No active sell orders for this item." : "当前商品暂无挂单。"}</div>`;
+  $$("[data-cancel-order]").forEach(button => button.addEventListener("click", () => cancelPlayerOrder(button.dataset.cancelOrder)));
 }
 
 function drawMarketChart(itemKey) {
@@ -2539,11 +2776,22 @@ function drawMarketChart(itemKey) {
   const color = GOODS[itemKey].color;
   const points = history.map((value, index) => ({
     x: pad.l + (width - pad.l - pad.r) * index / (history.length - 1),
-    y: pad.t + (height - pad.t - pad.b) * (1 - (value - min) / Math.max(1, max - min))
+    y: pad.t + (height - pad.t - pad.b) * (1 - (value - min) / Math.max(1, max - min)),
+    value,
+    index
   }));
+  const stock = Math.floor(state.markets[systemId][itemKey].stock);
+  marketChartCache = { systemId, itemKey, history, points, pad, width, height, min, max, stock };
   const gradient = c.createLinearGradient(0, pad.t, 0, height - pad.b);
   gradient.addColorStop(0, `${color}35`);
   gradient.addColorStop(1, `${color}00`);
+  c.fillStyle = "rgba(137,165,215,.08)";
+  points.forEach((point, index) => {
+    const previous = history[index - 1] || point.value;
+    const volumeSeed = Math.abs(point.value - previous) / Math.max(1, point.value) + (stock % 11) / 80;
+    const barHeight = clamp(volumeSeed * 70, 5, 34);
+    c.fillRect(point.x - 2, height - pad.b - barHeight, 4, barHeight);
+  });
   c.beginPath();
   points.forEach((point, index) => index ? c.lineTo(point.x, point.y) : c.moveTo(point.x, point.y));
   c.lineTo(points[points.length - 1].x, height - pad.b);
@@ -2559,6 +2807,24 @@ function drawMarketChart(itemKey) {
   c.shadowBlur = 7;
   c.stroke();
   c.shadowBlur = 0;
+  if (marketChartHover?.active && marketChartHover.systemId === systemId && marketChartHover.itemKey === itemKey) {
+    const point = points[marketChartHover.index] || points[points.length - 1];
+    c.save();
+    c.strokeStyle = "rgba(164,243,255,.45)";
+    c.lineWidth = 1;
+    c.setLineDash([3, 5]);
+    c.beginPath(); c.moveTo(point.x, pad.t); c.lineTo(point.x, height - pad.b); c.stroke();
+    c.beginPath(); c.moveTo(pad.l, point.y); c.lineTo(width - pad.r, point.y); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = "#031521";
+    c.strokeStyle = "rgba(164,243,255,.85)";
+    c.lineWidth = 1.2;
+    c.beginPath(); c.arc(point.x, point.y, 4.5, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.restore();
+    updateChartTooltip(point);
+  } else {
+    $("#chartTooltip")?.classList.add("hidden");
+  }
 }
 
 function renderUpgrades() {
@@ -3534,6 +3800,7 @@ function setupEvents() {
   });
 
   $("#undockBtn").addEventListener("click", undock);
+  $("#hubUndockBtn")?.addEventListener("click", undock);
   $("#repairBtn").addEventListener("click", repairShip);
   $("#settingsBtn").addEventListener("click", openSettings);
   $$("[data-open-settings]").forEach(button => button.addEventListener("click", openSettings));
@@ -3607,6 +3874,12 @@ function setupEvents() {
     renderMarket();
   });
   $("#tradeQuantity").addEventListener("input", updateTradeTicket);
+  $("#limitSellPrice").addEventListener("input", event => {
+    event.target.dataset.edited = "1";
+    updateTradeTicket();
+  });
+  $("#marketChart").addEventListener("mousemove", handleChartHover);
+  $("#marketChart").addEventListener("mouseleave", hideChartTooltip);
   $$(".quantity-presets button").forEach(button => button.addEventListener("click", () => {
     const available = marketMode === "buy"
       ? Math.floor(state.markets[marketViewSystem()][selectedMarketItem].stock)

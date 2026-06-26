@@ -129,16 +129,32 @@
           <button data-station-tab="intel">区域情报</button>
         </nav>
         <div id="hubTab" class="station-tab station-hub active">
-          <div class="station-hub-layout">
-            <section class="station-visual">
+          <div class="station-hub-layout starport-dashboard">
+            <aside class="pilot-profile-card">
+              <div class="pilot-avatar"><span>△</span><i></i></div>
+              <div class="pilot-meta">
+                <p>PILOT ACCESS</p>
+                <strong id="pilotCallsign">边境飞行员</strong>
+                <small id="pilotRank">拓荒者执照 · LV 01</small>
+              </div>
+              <div class="pilot-mini-stats">
+                <div><span>余额</span><b id="pilotWallet">0 ISK</b></div>
+                <div><span>货舱</span><b id="pilotCargo">0 / 30</b></div>
+              </div>
+            </aside>
+
+            <section class="station-visual dock-showcase">
               <div class="station-viewport">
+                <div class="hangar-lights"></div>
                 <div class="station-ring ring-a"></div>
                 <div class="station-ring ring-b"></div>
                 <div class="hangar-gate"></div>
+                <div class="ship-holo-ring"></div>
                 <div class="docked-ship">
                   <i class="ship-keel"></i><i class="ship-nose"></i><i class="ship-core"></i><i class="ship-spine"></i><i class="ship-cockpit"></i><i class="ship-wing left"></i><i class="ship-wing right"></i><i class="ship-engine left"></i><i class="ship-engine right"></i>
                 </div>
                 <div class="dock-beam"></div>
+                <div class="ship-label-card"><span id="hubShipClass">PIONEER CLASS</span><b id="hubShipIntegrity">护盾 100%</b></div>
               </div>
               <div class="dock-status-grid">
                 <div><span id="hubSecurityLabel">安全等级</span><b id="hubSecurity">1.0</b></div>
@@ -147,14 +163,15 @@
                 <div><span id="hubTrafficLabel">本地交通</span><b id="hubTraffic">0 艘</b></div>
               </div>
             </section>
-            <section class="station-command">
+
+            <section class="station-command module-command-panel">
               <div class="command-briefing">
                 <p id="hubKicker">STATION COMMAND</p>
                 <h2 id="hubHeadline">欢迎回港，飞行员</h2>
                 <span id="hubBriefing">对接臂已锁定，市场、维修、合约与航线情报均已同步。</span>
               </div>
               <div id="hubStoryPulse" class="hub-story-pulse"></div>
-              <div class="module-grid">
+              <div class="module-grid station-function-grid">
                 <button class="station-module highlight" data-hub-module="market">
                   <i>◇</i><span><strong data-module-title="market">市场交易所</strong><small data-module-copy="market">买入、出售、查看买卖盘和价格走势</small></span><b data-module-status="market">在线</b>
                 </button>
@@ -179,6 +196,11 @@
               </div>
               <div id="hubNewsFeed" class="station-news-feed"></div>
             </section>
+            <button id="hubUndockBtn" class="undock-cta">
+              <span>离站出航</span>
+              <strong>UNDOCK</strong>
+              <i></i>
+            </button>
           </div>
         </div>
         <div id="marketTab" class="station-tab">
@@ -205,6 +227,7 @@
                 <section class="price-chart-panel">
                   <div class="terminal-section-head"><strong>价格走势</strong><span>最近24个周期</span></div>
                   <canvas id="marketChart" width="560" height="220"></canvas>
+                  <div id="chartTooltip" class="chart-tooltip hidden"></div>
                 </section>
                 <section class="order-book-panel">
                   <div class="terminal-section-head"><strong>市场深度</strong><span>数量 / 单价</span></div>
@@ -217,6 +240,7 @@
               <section class="market-ticket">
                 <div class="ticket-position"><span id="ticketModeLabel">立即购买</span><strong id="ticketAvailable">市场库存 0</strong></div>
                 <label><span>数量</span><input id="tradeQuantity" type="number" min="1" value="1"></label>
+                <label id="limitSellField" class="limit-sell-field hidden"><span>出售单价</span><input id="limitSellPrice" type="number" min="1" value="1"></label>
                 <div class="quantity-presets"><button data-qty="1">1</button><button data-qty="5">5</button><button data-qty="10">10</button><button data-qty="max">最大</button></div>
                 <div class="ticket-total"><span>预计总额</span><strong id="tradeTotal">0 ISK</strong><small id="tradeFee">含交易税</small></div>
                 <button id="executeTradeBtn" class="execute-trade">确认购买</button>
@@ -234,6 +258,10 @@
               <section>
                 <div class="terminal-section-head"><strong>地区比较</strong><span>卖出价</span></div>
                 <div id="regionalPrices" class="regional-prices"></div>
+              </section>
+              <section>
+                <div class="terminal-section-head"><strong>我的挂单</strong><span id="playerOrderCount">0 单</span></div>
+                <div id="playerOrdersPanel" class="player-orders-panel"></div>
               </section>
             </aside>
           </div>
@@ -434,7 +462,7 @@
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">STATION FIX · BUILD 0.37</div>
+    <div class="version">STARPORT LOBBY · BUILD 0.40</div>
   </div>
   <script src="game.js"></script>
 </body>
