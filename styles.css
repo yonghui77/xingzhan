@@ -739,3 +739,218 @@ body[data-quality="low"] .starport-dashboard:before{
   animation:none;
   opacity:.12;
 }
+
+/* 0.41 clean starport lobby: top access row, compact mission button, smaller undock CTA */
+.starport-dashboard{
+  grid-template-columns:minmax(220px,270px) minmax(420px,1fr) minmax(260px,320px);
+  grid-template-rows:48px minmax(0,1fr);
+  gap:14px;
+  padding:16px 18px 18px;
+}
+.starport-dashboard:before{
+  opacity:.22;
+  mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.68));
+}
+.starport-dashboard>.station-function-grid{
+  grid-column:1/-1;
+  grid-row:1;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  height:48px;
+  padding:4px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  border:1px solid rgba(164,243,255,.12);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),rgba(3,9,20,.42);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055);
+  backdrop-filter:blur(14px) saturate(1.18);
+  scrollbar-width:none;
+}
+.starport-dashboard>.station-function-grid::-webkit-scrollbar{display:none}
+.starport-dashboard>.station-function-grid .station-module{
+  flex:0 0 auto;
+  min-height:38px;
+  min-width:86px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:0 12px;
+  border-radius:14px;
+  border-color:rgba(164,243,255,.12);
+  background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.02));
+  box-shadow:none;
+  backdrop-filter:none;
+}
+.starport-dashboard>.station-function-grid .station-module i{
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  border-radius:9px;
+  font-size:12px;
+}
+.starport-dashboard>.station-function-grid .station-module span{display:block}
+.starport-dashboard>.station-function-grid .station-module strong{
+  padding:0;
+  white-space:nowrap;
+  font-size:var(--read-sm);
+  line-height:1;
+}
+.starport-dashboard>.station-function-grid .station-module small,
+.starport-dashboard>.station-function-grid .station-module b{
+  display:none;
+}
+.starport-dashboard>.station-function-grid .station-module.settings-module{
+  grid-column:auto;
+}
+.starport-dashboard>.station-function-grid .station-module:hover{
+  transform:translateY(-1px) scale(1.02);
+  border-color:rgba(164,243,255,.34);
+  background:linear-gradient(180deg,rgba(83,232,255,.14),rgba(255,255,255,.025));
+  box-shadow:0 10px 24px rgba(0,0,0,.18),0 0 18px rgba(83,232,255,.08);
+}
+.pilot-profile-card{
+  grid-column:1;
+  grid-row:2;
+  align-self:start;
+}
+.dock-showcase{
+  grid-column:2;
+  grid-row:2;
+}
+.module-command-panel{
+  grid-column:3;
+  grid-row:2;
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr);
+  gap:12px;
+  padding-bottom:66px;
+}
+.module-command-panel .command-briefing{
+  border-radius:18px;
+  padding:14px 15px;
+}
+.module-command-panel .command-briefing h2{
+  font-size:calc(var(--read-title) + 1px);
+}
+.module-command-panel .command-briefing span{
+  display:block;
+  margin-top:3px;
+  line-height:1.45;
+}
+.module-command-panel .hub-story-pulse{
+  min-height:72px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:10px;
+  margin:0;
+  padding:12px 13px 14px;
+  border-radius:18px;
+  cursor:pointer;
+  overflow:hidden;
+}
+.module-command-panel .hub-story-pulse strong{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.module-command-panel .hub-story-pulse p{
+  display:block;
+  margin-top:3px;
+  white-space:normal;
+  overflow:visible;
+  line-height:1.35;
+}
+.module-command-panel .hub-story-pulse em{
+  min-width:48px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  color:#06131a;
+  background:linear-gradient(135deg,var(--cyan),#a4f3ff);
+  font-style:normal;
+  font-weight:900;
+  font-size:var(--read-sm);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 8px 18px rgba(57,221,255,.14);
+}
+.module-command-panel .hub-story-pulse:hover{
+  border-color:rgba(164,243,255,.42);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 14px 32px rgba(0,0,0,.22),0 0 24px rgba(83,232,255,.1);
+}
+.module-command-panel .hub-story-pulse:active{
+  transform:scale(.985);
+}
+.station-news-feed{
+  max-height:none;
+  min-height:0;
+  overflow-y:auto;
+  mask-image:linear-gradient(#000 80%,transparent);
+}
+.station-news-feed div{
+  padding:8px 9px;
+}
+.undock-cta{
+  position:absolute;
+  right:18px;
+  bottom:18px;
+  z-index:4;
+  grid-column:auto;
+  grid-row:auto;
+  width:148px;
+  min-height:50px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 11px 0 16px;
+  border-radius:17px;
+}
+.undock-cta span{
+  font-size:17px;
+  line-height:1;
+}
+.undock-cta strong{
+  display:none;
+}
+.undock-cta i{
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+}
+.undock-cta:hover{
+  transform:translateY(-2px);
+}
+@media(max-width:1180px){
+  .starport-dashboard{
+    grid-template-columns:minmax(200px,250px) minmax(360px,1fr);
+    grid-template-rows:48px auto minmax(0,1fr);
+    overflow-y:auto;
+  }
+  .starport-dashboard>.station-function-grid{grid-column:1/-1;grid-row:1}
+  .pilot-profile-card{grid-column:1;grid-row:2}
+  .module-command-panel{grid-column:2;grid-row:2;padding-bottom:0}
+  .dock-showcase{grid-column:1/-1;grid-row:3}
+  .undock-cta{position:sticky;right:auto;bottom:0;grid-column:1/-1;justify-self:end;margin-left:auto}
+}
+@media(max-width:760px){
+  .starport-dashboard{grid-template-columns:1fr;grid-template-rows:48px auto auto minmax(0,1fr);padding:12px}
+  .starport-dashboard>.station-function-grid{grid-column:1;grid-row:1}
+  .pilot-profile-card{grid-column:1;grid-row:2}
+  .module-command-panel{grid-column:1;grid-row:3}
+  .dock-showcase{grid-column:1;grid-row:4}
+  .undock-cta{position:sticky;width:136px}
+}
+@media(max-height:820px){
+  .starport-dashboard{grid-template-rows:44px minmax(0,1fr);padding:12px 14px 14px}
+  .starport-dashboard>.station-function-grid{height:44px}
+  .starport-dashboard>.station-function-grid .station-module{min-height:34px}
+  .module-command-panel{gap:9px;padding-bottom:58px}
+  .module-command-panel .hub-story-pulse{min-height:62px;padding:10px 11px 12px}
+  .undock-cta{bottom:14px;right:14px;min-height:46px}
+  .undock-cta span{font-size:16px}
+}

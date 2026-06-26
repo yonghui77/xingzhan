@@ -2188,15 +2188,15 @@ function renderHub() {
   if ($("#hubShipIntegrity")) $("#hubShipIntegrity").textContent = settings.language === "en" ? `Shield ${shieldPct}% · Hull ${hullPct}%` : `护盾 ${shieldPct}% · 装甲 ${hullPct}%`;
   const hubUndock = $("#hubUndockBtn");
   if (hubUndock) {
-    hubUndock.querySelector("span").textContent = settings.language === "en" ? "Launch" : "离站出航";
+    hubUndock.querySelector("span").textContent = settings.language === "en" ? "Launch" : "离站";
     hubUndock.querySelector("strong").textContent = settings.language === "en" ? "UNDOCK" : "UNDOCK";
   }
 
   $("#hubKicker").textContent = text.stationCommand;
   $("#hubHeadline").textContent = settings.language === "en" ? `Docked at ${label.station}` : `已停靠：${label.station}`;
   $("#hubBriefing").textContent = settings.language === "en"
-    ? "Choose a station module. The market is now a terminal inside the starport rather than the whole station."
-    : "请选择站内模块。市场现在是星港里的一个终端，而不是整个空间站。";
+    ? "Use the top access bar. Tasks and contracts are collected in the mission desk."
+    : "使用顶部功能栏。主线与合约统一收进任务入口。";
   $("#hubSecurityLabel").textContent = text.securityLevel;
   $("#hubTaxLabel").textContent = text.tradeTax;
   $("#hubThreatLabel").textContent = text.localThreat;
@@ -2207,21 +2207,21 @@ function renderHub() {
   $("#hubTraffic").textContent = settings.language === "en" ? `${localPilots} ships` : `${localPilots} 艘`;
 
   const moduleCopy = settings.language === "en" ? {
-    market: ["Market Exchange", "Buy, sell, inspect order books and price history", scarce ? `${scarce} scarce` : "Online"],
-    shipyard: ["Ship Service Bay", "Repair shields and hull; upgrade weapons and cargo", repairCost ? `${formatNumber(repairCost)} ISK` : "Ready"],
-    contracts: ["Contract Hall", "Accept hauling, mining, combat and trading contracts", `${activeContracts} open`],
-    hangar: ["Hangar Hold", "Inspect inventory, cargo usage and local valuation", `${cargoUsedNow}/${stats.cargo}`],
-    map: ["Star Map", "Review security, routes and jump options", `${state.fuel}/${state.maxFuel}`],
-    intel: ["Intel Terminal", "Regional spreads, risk reports and pirate activity", stationThreatText(threatValue)],
-    settings: ["System Settings", "Fonts, graphics clarity, language, music and SFX", "Prefs"]
+    market: ["Exchange", "Buy, sell, inspect order books and price history", scarce ? `${scarce} scarce` : "Online"],
+    shipyard: ["Fitting", "Repair shields and hull; upgrade weapons and cargo", repairCost ? `${formatNumber(repairCost)} ISK` : "Ready"],
+    contracts: ["Missions", "Main thread, contracts, hauling, mining and combat", `${activeContracts} open`],
+    hangar: ["Storage", "Inspect inventory, cargo usage and local valuation", `${cargoUsedNow}/${stats.cargo}`],
+    map: ["Map", "Review security, routes and jump options", `${state.fuel}/${state.maxFuel}`],
+    intel: ["Intel", "Regional spreads, risk reports and pirate activity", stationThreatText(threatValue)],
+    settings: ["Settings", "Fonts, graphics clarity, language, music and SFX", "Prefs"]
   } : {
-    market: ["市场交易所", "买入、出售、查看买卖盘和价格走势", scarce ? `${scarce} 类紧缺` : "在线"],
-    shipyard: ["舰船维护区", "维修护盾与装甲，升级武器和货舱", repairCost ? `${formatNumber(repairCost)} ISK` : "就绪"],
-    contracts: ["任务大厅", "领取运输、采矿、清剿与贸易合约", `${activeContracts} 份可接`],
-    hangar: ["仓库货舱", "查看库存、货舱占用与本地估值", `${cargoUsedNow}/${stats.cargo}`],
-    map: ["星图导航", "查看星系安全、航线和跃迁条件", `${state.fuel}/${state.maxFuel}`],
-    intel: ["情报终端", "地区价差、风险报告与海盗活动", stationThreatText(threatValue)],
-    settings: ["系统设置", "字体、清晰度、语言、音乐和音效", "偏好"]
+    market: ["交易行", "买入、出售、查看买卖盘和价格走势", scarce ? `${scarce} 类紧缺` : "在线"],
+    shipyard: ["改装", "维修护盾与装甲，升级武器和货舱", repairCost ? `${formatNumber(repairCost)} ISK` : "就绪"],
+    contracts: ["任务", "主线、合约、运输、采矿与清剿", `${activeContracts} 份可接`],
+    hangar: ["仓库", "查看库存、货舱占用与本地估值", `${cargoUsedNow}/${stats.cargo}`],
+    map: ["星图", "查看星系安全、航线和跃迁条件", `${state.fuel}/${state.maxFuel}`],
+    intel: ["情报", "地区价差、风险报告与海盗活动", stationThreatText(threatValue)],
+    settings: ["设置", "字体、清晰度、语言、音乐和音效", "偏好"]
   };
   Object.entries(moduleCopy).forEach(([key, [title, copy, status]]) => {
     const titleNode = $(`[data-module-title="${key}"]`);
@@ -2234,16 +2234,14 @@ function renderHub() {
 
   const storyPulse = $("#hubStoryPulse");
   if (storyPulse) {
-    const nextText = storyFocus.allDone
-      ? (settings.language === "en" ? "Open frontier: choose your own profession." : "自由边境已开放：现在由你决定职业路线。")
-      : storyFocus.next.guidance;
+    storyPulse.dataset.storyAction = "contracts";
     storyPulse.innerHTML = `
       <div>
-        <span>${settings.language === "en" ? "MAIN THREAD" : "主线信标"}</span>
-        <strong>${storyTitle(storyFocus.chapter, storyFocus.allDone)}</strong>
-        <p>${storyFocus.allDone ? storySummary(storyFocus.chapter, true) : `${storyFocus.next.label} · ${nextText}`}</p>
+        <span>${settings.language === "en" ? "MISSION DESK" : "任务"}</span>
+        <strong>${storyFocus.allDone ? (settings.language === "en" ? "Open Frontier" : "自由边境") : storyFocus.next.label}</strong>
+        <p>${settings.language === "en" ? "Main thread and station contracts are inside." : "主线目标与空间站合约已收进任务大厅。"}</p>
       </div>
-      <button data-story-action="${storyFocus.next.action}" ${storyFocus.allDone ? "disabled" : ""}>${storyFocus.allDone ? (settings.language === "en" ? "Open" : "已开放") : storyFocus.next.actionLabel}</button>
+      <em>${settings.language === "en" ? "Open" : "查看"}</em>
       <i style="width:${storyFocus.pct}%"></i>`;
   }
 

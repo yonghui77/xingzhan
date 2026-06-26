@@ -130,6 +130,29 @@
         </nav>
         <div id="hubTab" class="station-tab station-hub active">
           <div class="station-hub-layout starport-dashboard">
+            <div class="module-grid station-function-grid">
+              <button class="station-module highlight" data-hub-module="market">
+                <i>◇</i><span><strong data-module-title="market">交易行</strong><small data-module-copy="market">买入、出售、查看买卖盘和价格走势</small></span><b data-module-status="market">在线</b>
+              </button>
+              <button class="station-module" data-hub-module="shipyard">
+                <i>⬡</i><span><strong data-module-title="shipyard">改装</strong><small data-module-copy="shipyard">维修护盾与装甲，升级武器和货舱</small></span><b data-module-status="shipyard">待检</b>
+              </button>
+              <button class="station-module" data-hub-module="hangar">
+                <i>▤</i><span><strong data-module-title="hangar">仓库</strong><small data-module-copy="hangar">查看库存、货舱占用与本地估值</small></span><b data-module-status="hangar">同步</b>
+              </button>
+              <button class="station-module" data-hub-module="contracts">
+                <i>▣</i><span><strong data-module-title="contracts">任务</strong><small data-module-copy="contracts">主线、合约、运输、采矿、清剿</small></span><b data-module-status="contracts">可用</b>
+              </button>
+              <button class="station-module" data-hub-module="map">
+                <i>✦</i><span><strong data-module-title="map">星图</strong><small data-module-copy="map">查看星系安全、航线和贸易机会</small></span><b data-module-status="map">跃迁</b>
+              </button>
+              <button class="station-module" data-hub-module="intel">
+                <i>⌁</i><span><strong data-module-title="intel">情报</strong><small data-module-copy="intel">地区价差、风险报告与海盗活动</small></span><b data-module-status="intel">更新</b>
+              </button>
+              <button class="station-module settings-module" data-hub-module="settings">
+                <i>⚙</i><span><strong data-module-title="settings">设置</strong><small data-module-copy="settings">字体、清晰度、语言、音乐和音效</small></span><b data-module-status="settings">偏好</b>
+              </button>
+            </div>
             <aside class="pilot-profile-card">
               <div class="pilot-avatar"><span>△</span><i></i></div>
               <div class="pilot-meta">
@@ -171,33 +194,10 @@
                 <span id="hubBriefing">对接臂已锁定，市场、维修、合约与航线情报均已同步。</span>
               </div>
               <div id="hubStoryPulse" class="hub-story-pulse"></div>
-              <div class="module-grid station-function-grid">
-                <button class="station-module highlight" data-hub-module="market">
-                  <i>◇</i><span><strong data-module-title="market">市场交易所</strong><small data-module-copy="market">买入、出售、查看买卖盘和价格走势</small></span><b data-module-status="market">在线</b>
-                </button>
-                <button class="station-module" data-hub-module="shipyard">
-                  <i>⬡</i><span><strong data-module-title="shipyard">舰船维护区</strong><small data-module-copy="shipyard">维修护盾与装甲，升级武器和货舱</small></span><b data-module-status="shipyard">待检</b>
-                </button>
-                <button class="station-module" data-hub-module="contracts">
-                  <i>▣</i><span><strong data-module-title="contracts">任务大厅</strong><small data-module-copy="contracts">领取运输、采矿、清剿与贸易合约</small></span><b data-module-status="contracts">可用</b>
-                </button>
-                <button class="station-module" data-hub-module="hangar">
-                  <i>▤</i><span><strong data-module-title="hangar">仓库货舱</strong><small data-module-copy="hangar">查看库存、货舱占用与本地估值</small></span><b data-module-status="hangar">同步</b>
-                </button>
-                <button class="station-module" data-hub-module="map">
-                  <i>✦</i><span><strong data-module-title="map">星图导航</strong><small data-module-copy="map">查看星系安全、航线和贸易机会</small></span><b data-module-status="map">跃迁</b>
-                </button>
-                <button class="station-module" data-hub-module="intel">
-                  <i>⌁</i><span><strong data-module-title="intel">情报终端</strong><small data-module-copy="intel">地区价差、风险报告与海盗活动</small></span><b data-module-status="intel">更新</b>
-                </button>
-                <button class="station-module settings-module" data-hub-module="settings">
-                  <i>⚙</i><span><strong data-module-title="settings">系统设置</strong><small data-module-copy="settings">字体、清晰度、语言、音乐和音效</small></span><b data-module-status="settings">偏好</b>
-                </button>
-              </div>
               <div id="hubNewsFeed" class="station-news-feed"></div>
             </section>
             <button id="hubUndockBtn" class="undock-cta">
-              <span>离站出航</span>
+              <span>离站</span>
               <strong>UNDOCK</strong>
               <i></i>
             </button>
@@ -462,7 +462,7 @@
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">STARPORT LOBBY · BUILD 0.40</div>
+    <div class="version">CLEAN STARPORT · BUILD 0.41</div>
   </div>
   <script src="game.js"></script>
 </body>
