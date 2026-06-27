@@ -218,7 +218,7 @@
         </div>
         <div id="marketTab" class="station-tab">
           <div class="market-toolbar">
-            <div><p>区域独立库存 · 实物必须运输 · AI玩家实时成交</p><strong id="marketSummary">市场运行正常</strong><em id="marketAdvisor">市场情报同步中...</em></div>
+            <div class="market-status-compact"><p class="market-rule-compact">区域独立库存 · 实物必须运输 · AI玩家实时成交</p><strong id="marketSummary">市场运行正常</strong><em id="marketAdvisor">市场情报同步中...</em></div>
             <div class="market-controls">
               <label class="market-system-picker"><span id="marketSystemLabel">行情站点</span><select id="marketSystemSelect"></select></label>
               <div class="market-mode"><button class="active" data-market-mode="buy">购买</button><button data-market-mode="sell">出售</button></div>
@@ -232,7 +232,7 @@
             </aside>
             <main class="market-detail">
               <header class="market-detail-head">
-                <div class="market-selected-icon" id="marketSelectedIcon">◆</div>
+                <div class="market-selected-icon" id="marketSelectedIcon"><img id="marketSelectedImage" src="assets/market/ore.webp" alt=""></div>
                 <div><p id="marketSelectedCategory">工业原料</p><h2 id="marketSelectedName">钛辉矿</h2><span id="marketSelectedDescription">基础舰体与工业组件原料</span></div>
                 <div class="market-quote"><span>市场中间价</span><strong id="marketMidPrice">0 ISK</strong><b id="marketPriceChange">0%</b></div>
               </header>
@@ -479,7 +479,7 @@
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">CIRCULAR VITALS · BUILD 0.44</div>
+    <div class="version">VISUAL MARKET · BUILD 0.45</div>
   </div>
   <script src="game.js"></script>
 </body>

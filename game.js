@@ -20,6 +20,10 @@ const GOODS = {
   guidance: { name: "制导芯片", icon: "⌁", color: "#ffd36d", base: 148, weight: 1, description: "导弹、无人机和火控插件的计算核心" }
 };
 
+const MARKET_ITEM_IMAGES = Object.fromEntries(
+  Object.keys(GOODS).map(key => [key, `assets/market/${key}.webp`])
+);
+
 const SYSTEMS = {
   aurora: {
     name: "曙光星系", station: "晨星贸易站", trait: "核心区综合贸易枢纽", security: 1, securityText: "安全区 1.0",
@@ -899,6 +903,80 @@ function removeLocalItems(key, amount, systemId = state.currentSystem) {
 function craftedOutputAmount(recipe, systemId = state.currentSystem) {
   const bonus = STATION_INDUSTRY[systemId]?.bonuses?.[recipe.output.item] || 0;
   return recipe.output.amount + bonus;
+}
+
+function procurementQuote(inputs, systemId = state.currentSystem) {
+  const missing = Object.entries(inputs).map(([itemKey, required]) => {
+    const amount = Math.max(0, required - localItemAmount(itemKey, systemId));
+    if (amount <= 0) return null;
+    const market = state.markets[systemId]?.[itemKey];
+    const unitPrice = market ? marketPrice(systemId, itemKey, "buy") : 0;
+    const gross = amount * unitPrice;
+    const fee = amount > 0 ? Math.max(1, Math.round(gross * .025)) : 0;
+    return {
+      itemKey,
+      amount,
+      available: Math.floor(market?.stock || 0),
+      unitPrice,
+      gross,
+      fee,
+      total: gross + fee
+    };
+  }).filter(Boolean);
+  const total = missing.reduce((sum, line) => sum + line.total, 0);
+  const unavailable = missing.find(line => line.available < line.amount);
+  return {
+    systemId,
+    missing,
+    total,
+    unavailable,
+    affordable: state.credits >= total,
+    canPurchase: missing.length > 0 && !unavailable && state.credits >= total
+  };
+}
+
+function procurementButtonLabel(quote) {
+  if (!quote.missing.length) return settings.language === "en" ? "Materials Ready" : "材料齐全";
+  if (quote.unavailable) return settings.language === "en" ? "Local Stock Shortage" : "本站市场缺货";
+  if (!quote.affordable) return settings.language === "en"
+    ? `Need ${formatNumber(quote.total)} ISK`
+    : `余额不足 · ${formatNumber(quote.total)} ISK`;
+  return settings.language === "en"
+    ? `Buy Missing · ${formatNumber(quote.total)} ISK`
+    : `一键采购 · ${formatNumber(quote.total)} ISK`;
+}
+
+function procureMaterials(inputs, sourceName = "制造项目") {
+  if (!state.docked) return toast("必须停靠空间站才能采购制造材料");
+  const quote = procurementQuote(inputs);
+  if (!quote.missing.length) return toast("所需材料已经齐全");
+  if (quote.unavailable) {
+    return toast(`本站市场库存不足：${localizedGood(quote.unavailable.itemKey).name} 需要 ${quote.unavailable.amount}，库存 ${quote.unavailable.available}`);
+  }
+  if (!quote.affordable) return toast(`采购需要 ${formatNumber(quote.total)} ISK，当前余额不足`);
+
+  state.credits -= quote.total;
+  quote.missing.forEach(line => {
+    const market = state.markets[state.currentSystem][line.itemKey];
+    market.stock -= line.amount;
+    market.priceFactor = clamp(
+      market.priceFactor * (1 + line.amount / (SYSTEMS[state.currentSystem].stock[line.itemKey] * 18)),
+      .3,
+      3.5
+    );
+    addToStationStorage(line.itemKey, line.amount);
+  });
+  rememberCurrentMarket();
+  const summary = quote.missing
+    .map(line => `${localizedGood(line.itemKey).name} × ${line.amount}`)
+    .join("、");
+  addFeed(`<b>${sourceName}</b> 一键采购：${summary}，支出 ${formatNumber(quote.total)} ISK。材料已送入本站仓库。`);
+  toast(`采购完成 · ${formatNumber(quote.total)} ISK`);
+  flashWallet();
+  audioEngine.play("trade");
+  renderStation();
+  updateHud();
+  saveGame();
 }
 
 function depositCargo(key, amount = Infinity) {
@@ -2923,9 +3001,9 @@ function renderMarket() {
     const change = (price / item.base - 1) * 100;
     const ownedLabel = local ? `${localItemAmount(key)}` : (settings.language === "en" ? "remote" : "远程");
     return `
-      <button class="market-list-item ${selectedMarketItem === key ? "active" : ""}" data-market-item="${key}" style="--item-color:${item.color}">
-        <span class="market-list-icon">${item.icon}</span>
-        <span><strong>${label.name}</strong><small>${settings.language === "en" ? "Stock" : "库存"} ${Math.floor(market[key].stock)} · ${settings.language === "en" ? "Local owned" : "本地持有"} ${ownedLabel}</small></span>
+      <button class="market-list-item ${selectedMarketItem === key ? "active" : ""}" data-market-item="${key}" style="--item-color:${item.color}" title="${label.description} · ${settings.language === "en" ? "Stock" : "库存"} ${Math.floor(market[key].stock)} · ${settings.language === "en" ? "Local owned" : "本地持有"} ${ownedLabel}">
+        <span class="market-list-icon"><img src="${MARKET_ITEM_IMAGES[key]}" alt=""></span>
+        <span><strong>${label.name}</strong></span>
         <span class="market-list-price"><b>${formatNumber(price)}</b><span class="${change > 0 ? "up" : ""}">${change >= 0 ? "+" : ""}${change.toFixed(0)}%</span></span>
       </button>`;
   }).join("");
@@ -2950,13 +3028,15 @@ function renderMarketDetail() {
   const owned = local ? localItemAmount(itemKey) : 0;
   const available = marketMode === "buy" ? Math.floor(market.stock) : owned;
 
-  $("#marketSelectedIcon").textContent = item.icon;
+  $("#marketSelectedImage").src = MARKET_ITEM_IMAGES[itemKey];
+  $("#marketSelectedImage").alt = label.name;
   $("#marketSelectedIcon").style.setProperty("--selected-color", item.color);
   $("#marketSelectedCategory").textContent = settings.language === "en"
     ? (itemKey === "ore" || itemKey === "crystal" ? "Resources & Industry" : "Ship Supplies & Salvage")
     : (itemKey === "ore" || itemKey === "crystal" ? "资源与工业原料" : "舰船补给与回收品");
   $("#marketSelectedName").textContent = label.name;
   $("#marketSelectedDescription").textContent = label.description;
+  $("#marketSelectedDescription").title = label.description;
   $("#marketMidPrice").textContent = `${formatNumber(Math.round((buyPrice + sellPrice) / 2))} ISK`;
   $("#marketPriceChange").textContent = `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
   $("#marketPriceChange").className = change > 0 ? "up" : "";
@@ -3180,12 +3260,14 @@ function renderUpgrades() {
         const canCraft = canCraftPlugin(id);
         const count = store[id] || 0;
         const installed = fitted[raw.slot] === id;
+        const quote = procurementQuote(raw.inputs);
         return `
           <article class="plugin-card" style="--plugin-color:${raw.color}">
             <header><i>${raw.icon}</i><span><small>${plugin.slotName} · ${raw.rarity}</small><strong>${plugin.name}</strong></span><b>${count}</b></header>
             <p>${settings.language === "en" ? raw.description : raw.description}</p>
             <div class="craft-recipe">${pluginInputText(raw.inputs)}</div>
             <footer>
+              <button class="procurement-button" data-procure-plugin="${id}" ${quote.canPurchase ? "" : "disabled"} title="${procurementButtonLabel(quote)}">⌑ ${procurementButtonLabel(quote)}</button>
               <button data-craft-plugin="${id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Manufacture" : "制造"}</button>
               <button data-install-plugin="${id}" ${count > 0 && !installed ? "" : "disabled"}>${installed ? (settings.language === "en" ? "Installed" : "已安装") : (settings.language === "en" ? "Fit" : "安装")}</button>
             </footer>
@@ -3205,6 +3287,10 @@ function renderUpgrades() {
       </article>`;
   }).join("");
   $$("[data-upgrade]").forEach(button => button.addEventListener("click", () => buyUpgrade(button.dataset.upgrade)));
+  $$("[data-procure-plugin]").forEach(button => button.addEventListener("click", () => {
+    const plugin = PLUGINS[button.dataset.procurePlugin];
+    if (plugin) procureMaterials(plugin.inputs, localizedPlugin(button.dataset.procurePlugin).name);
+  }));
   $$("[data-craft-plugin]").forEach(button => button.addEventListener("click", () => craftPlugin(button.dataset.craftPlugin)));
   $$("[data-install-plugin]").forEach(button => button.addEventListener("click", () => installPlugin(button.dataset.installPlugin)));
   $$("[data-uninstall-plugin]").forEach(button => button.addEventListener("click", () => uninstallPlugin(button.dataset.uninstallPlugin)));
@@ -3476,13 +3562,17 @@ function renderHangar() {
     const outputAmount = craftedOutputAmount(recipe);
     const outputBonus = outputAmount - recipe.output.amount;
     const industry = STATION_INDUSTRY[state.currentSystem];
+    const quote = procurementQuote(recipe.inputs);
     return `
       <article class="craft-card">
         <h4>${recipe.name}</h4>
         <p>${recipe.description}</p>
         <div class="craft-recipe">${inputText}<br><b>→ ${localizedGood(recipe.output.item).name} × ${outputAmount}</b></div>
         <small class="station-craft-bonus ${outputBonus > 0 ? "active" : ""}">${settings.language === "en" ? industry.en : industry.name}${outputBonus > 0 ? ` · +${outputBonus} ${settings.language === "en" ? "local yield" : "本地产出"}` : ""}</small>
-        <button data-craft-recipe="${recipe.id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Craft to Station Storage" : "制作到本站仓库"}</button>
+        <div class="craft-actions">
+          <button class="procurement-button" data-procure-recipe="${recipe.id}" ${quote.canPurchase ? "" : "disabled"} title="${procurementButtonLabel(quote)}">⌑ ${procurementButtonLabel(quote)}</button>
+          <button data-craft-recipe="${recipe.id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Craft to Storage" : "制作到仓库"}</button>
+        </div>
       </article>`;
   }).join("");
 
@@ -3501,6 +3591,10 @@ function renderHangar() {
 
   $$("[data-deposit-item]").forEach(button => button.addEventListener("click", () => depositCargo(button.dataset.depositItem)));
   $$("[data-withdraw-item]").forEach(button => button.addEventListener("click", () => withdrawCargo(button.dataset.withdrawItem)));
+  $$("[data-procure-recipe]").forEach(button => button.addEventListener("click", () => {
+    const recipe = CRAFTING_RECIPES.find(item => item.id === button.dataset.procureRecipe);
+    if (recipe) procureMaterials(recipe.inputs, recipe.name);
+  }));
   $$("[data-craft-recipe]").forEach(button => button.addEventListener("click", () => craftItem(button.dataset.craftRecipe)));
 }
 
