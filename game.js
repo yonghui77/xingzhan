@@ -11,7 +11,13 @@ const GOODS = {
   crystal: { name: "相位晶体", icon: "✦", color: "#a980ff", base: 135, weight: 1, description: "边境区稀有能量材料" },
   salvage: { name: "舰船残骸", icon: "⌬", color: "#ff9d66", base: 92, weight: 2, description: "海盗舰船拆解所得零件" },
   fuel: { name: "跃迁燃料", icon: "◉", color: "#51e7a6", base: 68, weight: 1, description: "星系跃迁所需消耗品" },
-  ammo: { name: "导弹弹药", icon: "➤", color: "#ff617b", base: 31, weight: 1, description: "前线持续消耗的军用品" }
+  ammo: { name: "导弹弹药", icon: "➤", color: "#ff617b", base: 31, weight: 1, description: "前线持续消耗的军用品" },
+  alloy: { name: "钛合金", icon: "▰", color: "#8edff2", base: 86, weight: 1, description: "插件外壳、炮架和基础舰体结构材料" },
+  ceramic: { name: "纳米陶瓷", icon: "◧", color: "#e8f3ff", base: 122, weight: 1, description: "高强度装甲与隔热材料" },
+  superconductor: { name: "超导纤维", icon: "∿", color: "#72f7d0", base: 165, weight: 1, description: "能源核心、激光武器和推进线路材料" },
+  lens: { name: "量子透镜", icon: "◈", color: "#c8a7ff", base: 210, weight: 1, description: "激光聚焦、扫描阵列和相位校准组件" },
+  capacitor: { name: "等离子电容", icon: "▣", color: "#7df4ff", base: 185, weight: 1, description: "护盾、跃迁与高能插件的储能组件" },
+  guidance: { name: "制导芯片", icon: "⌁", color: "#ffd36d", base: 148, weight: 1, description: "导弹、无人机和火控插件的计算核心" }
 };
 
 const SYSTEMS = {
@@ -19,29 +25,29 @@ const SYSTEMS = {
     name: "曙光星系", station: "晨星贸易站", trait: "核心区综合贸易枢纽", security: 1, securityText: "安全区 1.0",
     color: "#51e7a6", map: [18, 50], links: ["helios", "nyx"], risk: "极低",
     description: "新飞行员的起点。市场流动性高，但本地资源收益有限。",
-    modifiers: { ore: 1.18, crystal: 1.42, salvage: 1.15, fuel: .92, ammo: 1.03 },
-    stock: { ore: 130, crystal: 35, salvage: 55, fuel: 180, ammo: 150 }
+    modifiers: { ore: 1.18, crystal: 1.42, salvage: 1.15, fuel: .92, ammo: 1.03, alloy: 1.08, ceramic: 1.22, superconductor: 1.36, lens: 1.44, capacitor: 1.28, guidance: 1.18 },
+    stock: { ore: 130, crystal: 35, salvage: 55, fuel: 180, ammo: 150, alloy: 64, ceramic: 28, superconductor: 18, lens: 14, capacitor: 22, guidance: 34 }
   },
   helios: {
     name: "赫利俄斯工业区", station: "铸日空间站", trait: "舰船制造与矿石精炼中心", security: .7, securityText: "管制区 0.7",
     color: "#39ddff", map: [43, 25], links: ["aurora", "nyx", "vanta"], risk: "低",
     description: "工业设施密集，矿石需求旺盛，舰船补给价格较低。",
-    modifiers: { ore: 1.38, crystal: 1.2, salvage: 1.08, fuel: .95, ammo: .87 },
-    stock: { ore: 70, crystal: 50, salvage: 70, fuel: 145, ammo: 230 }
+    modifiers: { ore: 1.38, crystal: 1.2, salvage: 1.08, fuel: .95, ammo: .87, alloy: .86, ceramic: .92, superconductor: 1.12, lens: 1.18, capacitor: .98, guidance: .9 },
+    stock: { ore: 70, crystal: 50, salvage: 70, fuel: 145, ammo: 230, alloy: 180, ceramic: 90, superconductor: 44, lens: 32, capacitor: 70, guidance: 95 }
   },
   nyx: {
     name: "倪克斯边境", station: "夜幕前哨", trait: "矿业殖民地与护航集散地", security: .4, securityText: "边境区 0.4",
     color: "#ffc45c", map: [46, 76], links: ["aurora", "helios", "vanta"], risk: "中等",
     description: "富含相位晶体，海盗活动频繁，运输与护航利润可观。",
-    modifiers: { ore: .72, crystal: .61, salvage: .9, fuel: 1.22, ammo: 1.35 },
-    stock: { ore: 260, crystal: 190, salvage: 95, fuel: 80, ammo: 65 }
+    modifiers: { ore: .72, crystal: .61, salvage: .9, fuel: 1.22, ammo: 1.35, alloy: 1.02, ceramic: 1.04, superconductor: .88, lens: .78, capacitor: 1.08, guidance: 1.2 },
+    stock: { ore: 260, crystal: 190, salvage: 95, fuel: 80, ammo: 65, alloy: 86, ceramic: 55, superconductor: 82, lens: 64, capacitor: 48, guidance: 38 }
   },
   vanta: {
     name: "万塔深空", station: "黑潮自由港", trait: "无法区黑市与战争前线", security: 0, securityText: "无法区 0.0",
     color: "#ff617b", map: [75, 48], links: ["helios", "nyx"], risk: "极高",
     description: "顶级资源与最高战损并存。保险赔付降低，海盗舰队密集。",
-    modifiers: { ore: .83, crystal: .78, salvage: 1.52, fuel: 1.58, ammo: 1.85 },
-    stock: { ore: 190, crystal: 120, salvage: 40, fuel: 40, ammo: 24 }
+    modifiers: { ore: .83, crystal: .78, salvage: 1.52, fuel: 1.58, ammo: 1.85, alloy: 1.22, ceramic: 1.38, superconductor: .82, lens: .92, capacitor: 1.32, guidance: 1.46 },
+    stock: { ore: 190, crystal: 120, salvage: 40, fuel: 40, ammo: 24, alloy: 44, ceramic: 34, superconductor: 58, lens: 28, capacitor: 24, guidance: 20 }
   }
 };
 
@@ -106,8 +112,93 @@ const STORY_CHAPTERS = [
 const CRAFTING_RECIPES = [
   { id: "ammo_pack", name: "导弹弹药补给", description: "将矿物和残骸加工成前线消耗品。", inputs: { ore: 3, salvage: 1 }, output: { item: "ammo", amount: 6 } },
   { id: "jump_fuel", name: "跃迁燃料精炼", description: "压缩晶体能量，制造可装填燃料。", inputs: { ore: 2, crystal: 1 }, output: { item: "fuel", amount: 4 } },
-  { id: "phase_crystal", name: "相位晶体筛选", description: "从高纯矿物中筛选少量相位晶体。", inputs: { ore: 8, fuel: 1 }, output: { item: "crystal", amount: 1 } }
+  { id: "phase_crystal", name: "相位晶体筛选", description: "从高纯矿物中筛选少量相位晶体。", inputs: { ore: 8, fuel: 1 }, output: { item: "crystal", amount: 1 } },
+  { id: "titanium_alloy", name: "钛合金铸造", description: "把矿石和残骸熔炼为舰船插件外壳。", inputs: { ore: 5, salvage: 1 }, output: { item: "alloy", amount: 3 } },
+  { id: "nano_ceramic", name: "纳米陶瓷烧结", description: "制造耐热装甲和防御插件材料。", inputs: { ore: 4, crystal: 1 }, output: { item: "ceramic", amount: 2 } },
+  { id: "super_fiber", name: "超导纤维拉制", description: "将相位晶体和燃料棒加工为高效能源线路。", inputs: { crystal: 2, fuel: 2 }, output: { item: "superconductor", amount: 1 } },
+  { id: "quantum_lens", name: "量子透镜校准", description: "用于激光、扫描和电子战模块的精密部件。", inputs: { crystal: 3, salvage: 1 }, output: { item: "lens", amount: 1 } },
+  { id: "plasma_capacitor", name: "等离子电容封装", description: "为护盾和高能插件提供短时能量缓存。", inputs: { fuel: 3, crystal: 1, alloy: 1 }, output: { item: "capacitor", amount: 1 } },
+  { id: "guidance_chip", name: "制导芯片蚀刻", description: "制造导弹、火控和无人机控制所需芯片。", inputs: { salvage: 3, crystal: 1 }, output: { item: "guidance", amount: 1 } }
 ];
+
+const STATION_INDUSTRY = {
+  aurora: { name: "标准化装配", en: "Standard Assembly", bonuses: {} },
+  helios: { name: "重工业产线", en: "Heavy Industry Line", bonuses: { alloy: 1, ceramic: 1, capacitor: 1 } },
+  nyx: { name: "边境精炼阵列", en: "Frontier Refinery", bonuses: { crystal: 1, superconductor: 1, lens: 1 } },
+  vanta: { name: "战地军需工坊", en: "Field Arsenal", bonuses: { ammo: 2, guidance: 1 } }
+};
+
+const SHIP_SLOTS = {
+  weapon: { name: "武器槽", en: "Weapon", icon: "◇" },
+  defense: { name: "防御槽", en: "Defense", icon: "⬡" },
+  engineering: { name: "工程槽", en: "Engineering", icon: "◉" },
+  industrial: { name: "工业槽", en: "Industrial", icon: "▤" },
+  electronic: { name: "电子槽", en: "Electronic", icon: "⌁" }
+};
+
+const PLUGINS = {
+  railgun: {
+    name: "轻型磁轨炮", en: "Light Railgun", slot: "weapon", icon: "━", color: "#8edff2", rarity: "T1",
+    description: "高速动能炮，擅长击穿装甲，对护盾效率较低。",
+    inputs: { alloy: 3, guidance: 1, salvage: 2 },
+    stats: { weaponKind: "railgun", damageType: "kinetic", damageMult: 1.25, fireRateMult: .92, projectileSpeed: 900, bulletLife: 1.05, projectileRadius: 3.2, spread: .012, heat: .56, weaponColor: "#8edff2", weaponLabel: "磁轨炮" }
+  },
+  pulse_laser: {
+    name: "脉冲激光器", en: "Pulse Laser", slot: "weapon", icon: "✦", color: "#a4f3ff", rarity: "T1",
+    description: "高精度热能武器，快速瓦解护盾，不消耗弹药但发热更高。",
+    inputs: { lens: 1, superconductor: 2, capacitor: 1 },
+    stats: { weaponKind: "laser", damageType: "thermal", damageMult: 1.08, fireRateMult: .72, projectileSpeed: 1080, bulletLife: .78, projectileRadius: 2.4, spread: .004, heat: .78, weaponColor: "#a4f3ff", weaponLabel: "脉冲激光" }
+  },
+  missile_pod: {
+    name: "轻型导弹仓", en: "Light Missile Pod", slot: "weapon", icon: "➤", color: "#ff617b", rarity: "T1",
+    description: "远程爆炸武器，造成范围伤害，每次发射消耗 1 单位导弹弹药。",
+    inputs: { alloy: 2, guidance: 3, ammo: 8 },
+    stats: { weaponKind: "missile", damageType: "explosive", damageMult: 1.95, fireRateMult: 2.15, projectileSpeed: 520, bulletLife: 2.25, projectileRadius: 5.5, splashRadius: 92, spread: .02, heat: .68, ammoItem: "ammo", ammoCost: 1, weaponColor: "#ff617b", weaponLabel: "轻型导弹" }
+  },
+  shield_amp: {
+    name: "小型护盾增幅器", en: "Small Shield Amplifier", slot: "defense", icon: "⬡", color: "#53e8ff", rarity: "T1",
+    description: "提升护盾容量与护盾再生，适合护航和低风险跑商。",
+    inputs: { capacitor: 2, ceramic: 1, alloy: 2 },
+    stats: { shieldBonus: 45, shieldRegenBonus: 2.2 }
+  },
+  armor_plate: {
+    name: "复合装甲板", en: "Composite Armor Plate", slot: "defense", icon: "▰", color: "#e8f3ff", rarity: "T1",
+    description: "大幅提高装甲，但会略微降低航速。",
+    inputs: { ceramic: 3, alloy: 3, salvage: 2 },
+    stats: { hullBonus: 70, speedMult: .95 }
+  },
+  vector_thruster: {
+    name: "矢量推进插件", en: "Vector Thruster", slot: "engineering", icon: "↗", color: "#51e7a6", rarity: "T1",
+    description: "提升巡航速度与推进能量恢复，适合跑商和脱战。",
+    inputs: { superconductor: 2, fuel: 5, capacitor: 1 },
+    stats: { speedMult: 1.16, boostRecoveryBonus: 6 }
+  },
+  cargo_rack: {
+    name: "折叠货架舱", en: "Folded Cargo Rack", slot: "industrial", icon: "▤", color: "#ffc45c", rarity: "T1",
+    description: "增加货舱容量，但略微增加船体负载。",
+    inputs: { alloy: 4, ceramic: 1, ore: 6 },
+    stats: { cargoBonus: 24, speedMult: .97 }
+  },
+  mining_array: {
+    name: "采矿增效阵列", en: "Mining Booster Array", slot: "industrial", icon: "◆", color: "#39ddff", rarity: "T1",
+    description: "提升采矿速度，并稍微提高稀有材料筛出概率。",
+    inputs: { lens: 1, alloy: 2, superconductor: 1 },
+    stats: { miningBonus: .55, rareBonus: .035 }
+  },
+  radar_array: {
+    name: "雷达锁定阵列", en: "Radar Lock Array", slot: "electronic", icon: "⌁", color: "#c8a7ff", rarity: "T1",
+    description: "提高武器有效飞行时间与锁定辅助，适合远程交战。",
+    inputs: { guidance: 2, lens: 1, capacitor: 1 },
+    stats: { bulletLifeBonus: .25, spreadMult: .72 }
+  }
+};
+
+const DAMAGE_TYPES = {
+  plasma: { name: "等离子", en: "Plasma", color: "#39ddff", shield: 1, hull: 1, advice: "均衡伤害" },
+  kinetic: { name: "动能", en: "Kinetic", color: "#8edff2", shield: .78, hull: 1.32, advice: "装甲克制" },
+  thermal: { name: "热能", en: "Thermal", color: "#a4f3ff", shield: 1.38, hull: .76, advice: "护盾克制" },
+  explosive: { name: "爆炸", en: "Explosive", color: "#ff617b", shield: .94, hull: 1.12, advice: "范围打击" }
+};
 
 const AI_ROLES = {
   miner: { name: "矿工", color: "#ffc45c" },
@@ -119,21 +210,25 @@ const AI_ROLES = {
 const ENEMY_TYPES = {
   scout: {
     name: "海盗侦察无人机", color: "#ffb45d", hp: 42, radius: 14, speed: 165,
+    shieldRatio: .18, shieldResist: { thermal: .05 }, hullResist: { kinetic: .04 },
     detection: 720, lock: 500, weapon: 220, optimal: 175, damage: 6, fireRate: 1.05, bulletSpeed: 430,
     bounty: 55, salvage: [1, 2], cost: 8
   },
   interceptor: {
     name: "掠夺者截击舰", color: "#ff617b", hp: 68, radius: 18, speed: 178,
+    shieldRatio: .42, shieldResist: { thermal: .12, explosive: .06 }, hullResist: { kinetic: .08 },
     detection: 650, lock: 470, weapon: 285, optimal: 225, damage: 10, fireRate: 1.35, bulletSpeed: 410,
     bounty: 95, salvage: [1, 3], cost: 14
   },
   missile: {
     name: "秃鹫级导弹舰", color: "#c46dff", hp: 82, radius: 21, speed: 108,
+    shieldRatio: .62, shieldResist: { thermal: .2, explosive: .08 }, hullResist: { kinetic: .04 },
     detection: 920, lock: 700, weapon: 590, optimal: 500, damage: 15, fireRate: 2.15, bulletSpeed: 285,
     bounty: 135, salvage: [2, 4], cost: 20
   },
   gunship: {
     name: "海盗重型炮舰", color: "#ff445f", hp: 148, radius: 27, speed: 82,
+    shieldRatio: .28, shieldResist: { thermal: .08 }, hullResist: { kinetic: .18, explosive: .12 },
     detection: 620, lock: 490, weapon: 370, optimal: 305, damage: 21, fireRate: 1.55, bulletSpeed: 350,
     bounty: 185, salvage: [3, 6], cost: 28
   }
@@ -162,7 +257,13 @@ const EN_LABELS = {
     crystal: ["Phase Crystal", "Rare energy material from frontier systems"],
     salvage: ["Ship Salvage", "Recovered components from destroyed ships"],
     fuel: ["Jump Fuel", "Consumable required for system jumps"],
-    ammo: ["Missile Ammunition", "Military supply consumed on the front line"]
+    ammo: ["Missile Ammunition", "Military supply consumed on the front line"],
+    alloy: ["Titanium Alloy", "Hull frame and ship module casing material"],
+    ceramic: ["Nano Ceramic", "Heat-resistant armor and defense material"],
+    superconductor: ["Superconductive Fiber", "Energy line material for lasers and propulsion"],
+    lens: ["Quantum Lens", "Precision optic for laser, scanner and phase calibration"],
+    capacitor: ["Plasma Capacitor", "Power buffer for shields and high-energy modules"],
+    guidance: ["Guidance Chip", "Control core for missiles, drones and fire-control modules"]
   },
   systems: {
     aurora: ["Aurora", "Morningstar Trade Station"],
@@ -225,6 +326,8 @@ const defaultState = () => ({
   marketMemory: {},
   stationStorage: {},
   playerOrders: [],
+  pluginInventory: {},
+  fittedPlugins: { weapon: null, defense: null, engineering: null, industrial: null, electronic: null },
   story: { dockedOnce: true, viewedRemoteMarket: false },
   tutorial: { active: true, completed: false, step: 0, baselines: {}, enteredStep: null }
 });
@@ -265,7 +368,7 @@ const camera = { x: 0, y: 0 };
 const mouse = { x: innerWidth / 2, y: innerHeight / 2, down: false };
 const keys = {};
 const world = {
-  width: 2600, height: 1800, asteroids: [], enemies: [], bullets: [], enemyBullets: [], loot: [], particles: [],
+  width: 2600, height: 1800, asteroids: [], enemies: [], bullets: [], enemyBullets: [], loot: [], particles: [], combatText: [],
   station: { x: 0, y: 0, radius: 88 }, outpost: null
 };
 
@@ -394,16 +497,21 @@ const audioEngine = {
 
 function initializeMarkets() {
   Object.entries(SYSTEMS).forEach(([id, system]) => {
-    if (!state.markets[id]) {
-      state.markets[id] = {};
-      Object.keys(GOODS).forEach(key => {
+    if (!state.markets[id]) state.markets[id] = {};
+    Object.keys(GOODS).forEach(key => {
+      if (!state.markets[id][key]) {
         state.markets[id][key] = {
-          stock: system.stock[key],
-          priceFactor: system.modifiers[key],
-          history: [GOODS[key].base * system.modifiers[key]]
+          stock: system.stock[key] ?? 80,
+          priceFactor: system.modifiers[key] ?? 1,
+          history: [GOODS[key].base * (system.modifiers[key] ?? 1)]
         };
-      });
-    }
+      } else {
+        const market = state.markets[id][key];
+        if (!Number.isFinite(market.stock)) market.stock = system.stock[key] ?? 80;
+        if (!Number.isFinite(market.priceFactor)) market.priceFactor = system.modifiers[key] ?? 1;
+        if (!Array.isArray(market.history) || !market.history.length) market.history = [GOODS[key].base * (market.priceFactor || 1)];
+      }
+    });
   });
 }
 
@@ -426,6 +534,8 @@ function loadGame() {
       marketMemory: saved.marketMemory || {},
       stationStorage: saved.stationStorage || {},
       playerOrders: Array.isArray(saved.playerOrders) ? saved.playerOrders : [],
+      pluginInventory: saved.pluginInventory || {},
+      fittedPlugins: { ...base.fittedPlugins, ...(saved.fittedPlugins || {}) },
       visitedSystems: saved.visitedSystems || base.visitedSystems,
       story: { ...base.story, ...(saved.story || {}) },
       tutorial
@@ -550,7 +660,7 @@ function applyLanguage() {
   $(".settings-preview>p").textContent = settings.language === "en" ? "Pirate activity is reducing transport efficiency and raising local supply prices." : "海盗活动正在影响运输效率与当地补给价格。";
   $(".market-toolbar p").textContent = settings.language === "en" ? "Regional inventory · Physical transport required · AI pilots trade in real time" : "区域独立库存 · 实物必须运输 · AI玩家实时成交";
   $(".market-search input").placeholder = settings.language === "en" ? "Search market" : "搜索商品";
-  $(".market-group-title").innerHTML = settings.language === "en" ? "Market Categories <b>5</b>" : "市场分类 <b>5</b>";
+  $(".market-group-title").innerHTML = settings.language === "en" ? `Market Categories <b id="marketCategoryCount">${Object.keys(GOODS).length}</b>` : `市场分类 <b id="marketCategoryCount">${Object.keys(GOODS).length}</b>`;
   $(".price-chart-panel .terminal-section-head strong").textContent = settings.language === "en" ? "Price History" : "价格走势";
   $(".price-chart-panel .terminal-section-head span").textContent = settings.language === "en" ? "Last 24 cycles" : "最近24个周期";
   $(".order-book-panel .terminal-section-head strong").textContent = settings.language === "en" ? "Market Depth" : "市场深度";
@@ -637,9 +747,47 @@ function setSetting(key, value, previewSound = false) {
   }
 }
 
+function pluginStore(systemId = state.currentSystem) {
+  if (!state.pluginInventory) state.pluginInventory = {};
+  if (!state.pluginInventory[systemId]) state.pluginInventory[systemId] = {};
+  return state.pluginInventory[systemId];
+}
+
+function fittedPluginList() {
+  if (!state.fittedPlugins) state.fittedPlugins = { weapon: null, defense: null, engineering: null, industrial: null, electronic: null };
+  return Object.values(state.fittedPlugins).map(id => PLUGINS[id]).filter(Boolean);
+}
+
+function localizedPlugin(id) {
+  const plugin = PLUGINS[id];
+  if (!plugin) return null;
+  return {
+    ...plugin,
+    name: settings.language === "en" ? plugin.en : plugin.name,
+    slotName: settings.language === "en" ? SHIP_SLOTS[plugin.slot].en : SHIP_SLOTS[plugin.slot].name
+  };
+}
+
+function activeWeaponPlugin() {
+  return PLUGINS[state.fittedPlugins?.weapon] || null;
+}
+
+function pluginInputText(inputs) {
+  return Object.entries(inputs).map(([key, amount]) => {
+    const current = localItemAmount(key);
+    const enough = current >= amount;
+    return `<span class="${enough ? "" : "missing"}">${localizedGood(key).name} ${current}/${amount}</span>`;
+  }).join(" · ");
+}
+
+function canCraftPlugin(pluginId) {
+  const plugin = PLUGINS[pluginId];
+  return !!plugin && Object.entries(plugin.inputs).every(([key, amount]) => localItemAmount(key) >= amount);
+}
+
 function shipStats() {
   const u = state.upgrades;
-  return {
+  const stats = {
     maxShield: 100 + u.shield * 35,
     maxHull: 100 + u.hull * 45,
     damage: 12 * (1 + u.weapon * .25),
@@ -648,8 +796,51 @@ function shipStats() {
     speed: 240 * (1 + u.engine * .12),
     miningRate: 1 + u.mining * .35,
     shieldRegen: 5 + u.shield * 1.5,
-    boostRecovery: 18 + u.engine * 3
+    boostRecovery: 18 + u.engine * 3,
+    projectileSpeed: 720,
+    bulletLife: 1.3,
+    projectileRadius: 3,
+    spread: .018,
+    weaponColor: "#39ddff",
+    weaponKind: "pulse",
+    damageType: "plasma",
+    weaponLabel: settings.language === "en" ? "Pulse Cannon" : "脉冲炮",
+    heatPerShot: .45,
+    splashRadius: 0,
+    ammoItem: null,
+    ammoCost: 0,
+    rareBonus: 0
   };
+  fittedPluginList().forEach(plugin => {
+    const s = plugin.stats || {};
+    if (s.damageMult) stats.damage *= s.damageMult;
+    if (s.fireRateMult) stats.fireRate *= s.fireRateMult;
+    if (s.speedMult) stats.speed *= s.speedMult;
+    if (s.spreadMult) stats.spread *= s.spreadMult;
+    if (s.shieldBonus) stats.maxShield += s.shieldBonus;
+    if (s.hullBonus) stats.maxHull += s.hullBonus;
+    if (s.cargoBonus) stats.cargo += s.cargoBonus;
+    if (s.miningBonus) stats.miningRate += s.miningBonus;
+    if (s.rareBonus) stats.rareBonus += s.rareBonus;
+    if (s.shieldRegenBonus) stats.shieldRegen += s.shieldRegenBonus;
+    if (s.boostRecoveryBonus) stats.boostRecovery += s.boostRecoveryBonus;
+    if (s.projectileSpeed) stats.projectileSpeed = s.projectileSpeed;
+    if (s.bulletLife) stats.bulletLife = s.bulletLife;
+    if (s.bulletLifeBonus) stats.bulletLife += s.bulletLifeBonus;
+    if (s.projectileRadius) stats.projectileRadius = s.projectileRadius;
+    if (s.spread != null) stats.spread = s.spread;
+    if (s.weaponColor) stats.weaponColor = s.weaponColor;
+    if (s.weaponKind) stats.weaponKind = s.weaponKind;
+    if (s.damageType) stats.damageType = s.damageType;
+    if (s.weaponLabel) stats.weaponLabel = settings.language === "en" ? (plugin.en || s.weaponLabel) : s.weaponLabel;
+    if (s.splashRadius) stats.splashRadius = s.splashRadius;
+    if (s.heat) stats.heatPerShot = s.heat;
+    if (s.ammoItem) stats.ammoItem = s.ammoItem;
+    if (s.ammoCost) stats.ammoCost = s.ammoCost;
+  });
+  stats.fireRate = Math.max(.08, stats.fireRate);
+  stats.spread = Math.max(.001, stats.spread);
+  return stats;
 }
 
 function cargoUsed() {
@@ -705,6 +896,11 @@ function removeLocalItems(key, amount, systemId = state.currentSystem) {
   return amount - Math.max(0, remaining);
 }
 
+function craftedOutputAmount(recipe, systemId = state.currentSystem) {
+  const bonus = STATION_INDUSTRY[systemId]?.bonuses?.[recipe.output.item] || 0;
+  return recipe.output.amount + bonus;
+}
+
 function depositCargo(key, amount = Infinity) {
   const moved = removeCargo(key, Number.isFinite(amount) ? amount : (state.cargo[key] || 0));
   if (moved <= 0) return toast("货舱没有可存入的物品");
@@ -735,9 +931,63 @@ function craftItem(recipeId) {
   const missing = Object.entries(recipe.inputs).find(([key, amount]) => localItemAmount(key) < amount);
   if (missing) return toast(`材料不足：${localizedGood(missing[0]).name}`);
   Object.entries(recipe.inputs).forEach(([key, amount]) => removeLocalItems(key, amount));
-  addToStationStorage(recipe.output.item, recipe.output.amount);
-  addFeed(`在 <b>${localizedSystem(state.currentSystem).station}</b> 制作 ${localizedGood(recipe.output.item).name} × ${recipe.output.amount}。`);
+  const outputAmount = craftedOutputAmount(recipe);
+  addToStationStorage(recipe.output.item, outputAmount);
+  addFeed(`在 <b>${localizedSystem(state.currentSystem).station}</b> 制作 ${localizedGood(recipe.output.item).name} × ${outputAmount}。`);
   audioEngine.play("trade");
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function craftPlugin(pluginId) {
+  const plugin = PLUGINS[pluginId];
+  if (!plugin) return;
+  const missing = Object.entries(plugin.inputs).find(([key, amount]) => localItemAmount(key) < amount);
+  if (missing) return toast(`材料不足：${localizedGood(missing[0]).name}`);
+  Object.entries(plugin.inputs).forEach(([key, amount]) => removeLocalItems(key, amount));
+  const store = pluginStore();
+  store[pluginId] = (store[pluginId] || 0) + 1;
+  addFeed(`在 <b>${localizedSystem(state.currentSystem).station}</b> 制造插件：${localizedPlugin(pluginId).name}。`);
+  audioEngine.play("trade");
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function installPlugin(pluginId) {
+  const plugin = PLUGINS[pluginId];
+  if (!plugin) return;
+  const store = pluginStore();
+  if ((store[pluginId] || 0) <= 0) return toast("当前空间站没有该插件库存");
+  if (!state.fittedPlugins) state.fittedPlugins = defaultState().fittedPlugins;
+  const previous = state.fittedPlugins[plugin.slot];
+  if (previous === pluginId) return toast("该插件已经安装");
+  store[pluginId]--;
+  if (store[pluginId] <= 0) delete store[pluginId];
+  if (previous) store[previous] = (store[previous] || 0) + 1;
+  state.fittedPlugins[plugin.slot] = pluginId;
+  const stats = shipStats();
+  state.shield = Math.min(stats.maxShield, state.shield + (plugin.stats.shieldBonus || 0));
+  state.hull = Math.min(stats.maxHull, state.hull + (plugin.stats.hullBonus || 0));
+  toast(`已安装：${localizedPlugin(pluginId).name}`);
+  addFeed(`舰船 ${SHIP_SLOTS[plugin.slot].name} 安装 <b>${localizedPlugin(pluginId).name}</b>。`);
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function uninstallPlugin(slot) {
+  if (!state.fittedPlugins) state.fittedPlugins = defaultState().fittedPlugins;
+  const pluginId = state.fittedPlugins[slot];
+  if (!pluginId || !PLUGINS[pluginId]) return;
+  const store = pluginStore();
+  store[pluginId] = (store[pluginId] || 0) + 1;
+  state.fittedPlugins[slot] = null;
+  const stats = shipStats();
+  state.shield = Math.min(state.shield, stats.maxShield);
+  state.hull = Math.min(state.hull, stats.maxHull);
+  toast(`已拆下：${localizedPlugin(pluginId).name}`);
   renderStation();
   updateHud();
   saveGame();
@@ -1013,6 +1263,7 @@ function resetWorld() {
   world.enemyBullets.length = 0;
   world.loot.length = 0;
   world.particles.length = 0;
+  world.combatText.length = 0;
   world.outpost = null;
   player.x = 0;
   player.y = 320;
@@ -1045,7 +1296,8 @@ function resetWorld() {
 function spawnAsteroid() {
   const angle = Math.random() * Math.PI * 2;
   const radius = randomRange(300, 1150);
-  const rareChance = .08 + (1 - SYSTEMS[state.currentSystem].security) * .32 + state.upgrades.mining * .025;
+  const stats = shipStats();
+  const rareChance = .08 + (1 - SYSTEMS[state.currentSystem].security) * .32 + state.upgrades.mining * .025 + stats.rareBonus;
   const resource = Math.random() < rareChance ? "crystal" : "ore";
   world.asteroids.push({
     id: crypto.randomUUID(), x: Math.cos(angle) * radius, y: Math.sin(angle) * radius,
@@ -1090,17 +1342,16 @@ function spawnEnemy(options = {}) {
   const point = options.x != null ? { x: options.x, y: options.y } : findSafeSpawnPoint(options.initial ? 700 : 820);
   const hpScale = 1 + (1 - security) * .16;
   const maxHp = Math.round(spec.hp * hpScale);
+  const maxShield = Math.round(spec.hp * (spec.shieldRatio || 0) * hpScale);
   const enemy = {
     id: crypto.randomUUID(), x: point.x, y: point.y,
     homeX: point.x, homeY: point.y, patrolAngle: randomRange(0, Math.PI * 2),
-    vx: 0, vy: 0, angle: 0, r: spec.radius, hp: maxHp, maxHp,
+    vx: 0, vy: 0, angle: 0, r: spec.radius, hp: maxHp, maxHp, shield: maxShield, maxShield,
     speed: spec.speed, fireCooldown: randomRange(.4, spec.fireRate), tier: type === "gunship" ? 2 : 1,
     type, name: spec.name, state: "patrol", lockTimer: 0, lostTimer: 0, calledReinforcement: false, spawnReason: reason,
     detection: spec.detection, lockRange: spec.lock, weaponRange: spec.weapon, optimal: spec.optimal
   };
-  world.enemies.push({
-    ...enemy
-  });
+  world.enemies.push(enemy);
   pve.status = `${reason}：${spec.name}`;
   return enemy;
 }
@@ -1145,6 +1396,63 @@ function createParticles(x, y, color, amount = 8, speed = 100) {
       life: randomRange(.35, .9), maxLife: 1, color, size: randomRange(1, 3)
     });
   }
+}
+
+function damageLayerMultiplier(type, layer, spec = {}) {
+  const profile = DAMAGE_TYPES[type] || DAMAGE_TYPES.plasma;
+  const resistMap = layer === "shield" ? spec.shieldResist : spec.hullResist;
+  const resistance = clamp(resistMap?.[type] || 0, 0, .8);
+  return Math.max(.1, profile[layer] * (1 - resistance));
+}
+
+function createCombatText(x, y, amount, type, layer, critical = false) {
+  const profile = DAMAGE_TYPES[type] || DAMAGE_TYPES.plasma;
+  world.combatText.push({
+    x, y, amount: Math.max(0, Math.round(amount)), type, layer,
+    color: layer === "shield" ? "#53e8ff" : profile.color,
+    life: critical ? 1.05 : .78, maxLife: critical ? 1.05 : .78,
+    vy: critical ? -42 : -30, critical
+  });
+}
+
+function applyDamageToEnemy(enemy, amount, type = "plasma", options = {}) {
+  if (!enemy || enemy.hp <= 0 || amount <= 0) {
+    return { shieldDamage: 0, hullDamage: 0, total: 0, destroyed: false };
+  }
+  const spec = ENEMY_TYPES[enemy.type] || ENEMY_TYPES.interceptor;
+  let rawRemaining = amount;
+  let shieldDamage = 0;
+  let hullDamage = 0;
+  if (enemy.shield > 0 && rawRemaining > 0) {
+    const multiplier = damageLayerMultiplier(type, "shield", spec);
+    const before = enemy.shield;
+    shieldDamage = Math.min(before, rawRemaining * multiplier);
+    enemy.shield = Math.max(0, before - shieldDamage);
+    rawRemaining = Math.max(0, rawRemaining - before / multiplier);
+  }
+  if (rawRemaining > 0) {
+    const multiplier = damageLayerMultiplier(type, "hull", spec);
+    hullDamage = Math.min(enemy.hp, rawRemaining * multiplier);
+    enemy.hp = Math.max(0, enemy.hp - hullDamage);
+  }
+  const layer = hullDamage > 0 ? "hull" : "shield";
+  const displayed = hullDamage > 0 ? hullDamage : shieldDamage;
+  if (!options.silent && displayed > 0) {
+    createCombatText(enemy.x, enemy.y - enemy.r, displayed, type, layer, options.direct === true);
+  }
+  if (enemy.hp <= 0) destroyEnemy(enemy);
+  return { shieldDamage, hullDamage, total: shieldDamage + hullDamage, destroyed: enemy.hp <= 0 };
+}
+
+function applyMissileExplosion(bullet, primaryEnemy) {
+  const radius = bullet.splashRadius || 0;
+  const targets = world.enemies.filter(enemy => enemy.hp > 0 && distance(enemy, bullet) <= radius);
+  if (primaryEnemy && !targets.includes(primaryEnemy)) targets.unshift(primaryEnemy);
+  targets.forEach(enemy => {
+    const d = enemy === primaryEnemy ? 0 : distance(enemy, bullet);
+    const falloff = enemy === primaryEnemy ? 1 : clamp(1 - d / Math.max(1, radius), .2, .62);
+    applyDamageToEnemy(enemy, bullet.damage * falloff, bullet.damageType, { direct: enemy === primaryEnemy });
+  });
 }
 
 function playerCargoValue() {
@@ -1310,17 +1618,26 @@ function update(dt) {
 
 function shootPlayer() {
   const stats = shipStats();
-  const spread = randomRange(-.018, .018);
+  if (stats.ammoItem && stats.ammoCost > 0) {
+    const consumed = removeCargo(stats.ammoItem, stats.ammoCost);
+    if (consumed < stats.ammoCost) {
+      if (consumed > 0) addCargo(stats.ammoItem, consumed);
+      player.fireCooldown = .35;
+      return toast(`${localizedGood(stats.ammoItem).name}不足，无法发射${stats.weaponLabel}`);
+    }
+  }
+  const spread = randomRange(-stats.spread, stats.spread);
   const angle = player.angle + spread;
   world.bullets.push({
     x: player.x + Math.cos(angle) * 24, y: player.y + Math.sin(angle) * 24,
-    vx: Math.cos(angle) * 720, vy: Math.sin(angle) * 720,
-    life: 1.3, damage: stats.damage, r: 3
+    vx: Math.cos(angle) * stats.projectileSpeed, vy: Math.sin(angle) * stats.projectileSpeed,
+    life: stats.bulletLife, damage: stats.damage, r: stats.projectileRadius,
+    kind: stats.weaponKind, damageType: stats.damageType, splashRadius: stats.splashRadius, color: stats.weaponColor
   });
   player.fireCooldown = stats.fireRate;
-  pve.heat = clamp(pve.heat + .45, 0, 100);
+  pve.heat = clamp(pve.heat + stats.heatPerShot, 0, 100);
   audioEngine.play("shoot");
-  createParticles(player.x + Math.cos(angle) * 22, player.y + Math.sin(angle) * 22, "#39ddff", 2, 35);
+  createParticles(player.x + Math.cos(angle) * 22, player.y + Math.sin(angle) * 22, stats.weaponColor, stats.weaponKind === "missile" ? 5 : 2, stats.weaponKind === "missile" ? 55 : 35);
 }
 
 function updateBullets(dt) {
@@ -1330,16 +1647,16 @@ function updateBullets(dt) {
     bullet.life -= dt;
     for (const enemy of world.enemies) {
       if (bullet.life > 0 && distance(bullet, enemy) < enemy.r + bullet.r) {
-        enemy.hp -= bullet.damage;
         bullet.life = 0;
-        createParticles(bullet.x, bullet.y, "#ff768c", 5, 75);
-        if (enemy.hp <= 0) destroyEnemy(enemy);
+        if (bullet.kind === "missile") applyMissileExplosion(bullet, enemy);
+        else applyDamageToEnemy(enemy, bullet.damage, bullet.damageType, { direct: true });
+        createParticles(bullet.x, bullet.y, bullet.color || "#ff768c", bullet.kind === "missile" ? 9 : 5, bullet.kind === "missile" ? 105 : 75);
       }
     }
     const outpost = world.outpost;
     if (bullet.life > 0 && outpost?.active && distance(bullet, outpost) < outpost.r + bullet.r) {
       bullet.life = 0;
-      damageOutpost(bullet.damage);
+      damageOutpost(bullet.damage, bullet.damageType);
       createParticles(bullet.x, bullet.y, outpost.shield > 0 ? "#a980ff" : "#ff617b", 7, 85);
     }
   });
@@ -1356,12 +1673,15 @@ function updateBullets(dt) {
   world.enemyBullets = world.enemyBullets.filter(b => b.life > 0);
 }
 
-function damageOutpost(amount) {
+function damageOutpost(amount, type = "plasma") {
   const outpost = world.outpost;
   if (!outpost?.active) return;
   pve.heat = clamp(pve.heat + 1.6, 0, 100);
   if (outpost.shield > 0) {
-    outpost.shield = Math.max(0, outpost.shield - amount);
+    const multiplier = damageLayerMultiplier(type, "shield", { shieldResist: { thermal: .18, explosive: .1 } });
+    const dealt = Math.min(outpost.shield, amount * multiplier);
+    outpost.shield = Math.max(0, outpost.shield - dealt);
+    createCombatText(outpost.x, outpost.y - outpost.r, dealt, type, "shield", true);
     if (outpost.shield <= 0 && !outpost.waveTriggered) {
       outpost.waveTriggered = true;
       pve.outpostStage = 1;
@@ -1377,7 +1697,10 @@ function damageOutpost(amount) {
       });
     }
   } else {
-    outpost.hp = Math.max(0, outpost.hp - amount);
+    const multiplier = damageLayerMultiplier(type, "hull", { hullResist: { kinetic: .22, explosive: .16 } });
+    const dealt = Math.min(outpost.hp, amount * multiplier);
+    outpost.hp = Math.max(0, outpost.hp - dealt);
+    createCombatText(outpost.x, outpost.y - outpost.r, dealt, type, "hull", true);
     if (outpost.hp <= 0) destroyOutpost();
   }
 }
@@ -1548,6 +1871,12 @@ function updateParticles(dt) {
     p.life -= dt;
   });
   world.particles = world.particles.filter(p => p.life > 0);
+  world.combatText.forEach(text => {
+    text.y += text.vy * dt;
+    text.vy *= .96;
+    text.life -= dt;
+  });
+  world.combatText = world.combatText.filter(text => text.life > 0);
 }
 
 function updateInteraction(dt) {
@@ -2826,6 +3155,44 @@ function drawMarketChart(itemKey) {
 }
 
 function renderUpgrades() {
+  const store = pluginStore();
+  const fitted = state.fittedPlugins || defaultState().fittedPlugins;
+  $("#fittingPanel").innerHTML = `
+    <div class="terminal-section-head"><strong>${settings.language === "en" ? "Ship Plugin Slots" : "舰船插件槽"}</strong><span>${settings.language === "en" ? "Station-local inventory" : "插件库存属于当前空间站"}</span></div>
+    <div class="slot-grid">
+      ${Object.entries(SHIP_SLOTS).map(([slot, slotInfo]) => {
+        const pluginId = fitted[slot];
+        const plugin = localizedPlugin(pluginId);
+        return `
+          <article class="slot-card ${plugin ? "filled" : ""}">
+            <i>${slotInfo.icon}</i>
+            <span><small>${settings.language === "en" ? slotInfo.en : slotInfo.name}</small><strong>${plugin ? plugin.name : (settings.language === "en" ? "Empty Slot" : "空槽位")}</strong></span>
+            ${plugin ? `<button data-uninstall-plugin="${slot}">${settings.language === "en" ? "Remove" : "拆下"}</button>` : `<b>${settings.language === "en" ? "Ready" : "待安装"}</b>`}
+          </article>`;
+      }).join("")}
+    </div>`;
+
+  $("#pluginForge").innerHTML = `
+    <div class="terminal-section-head"><strong>${settings.language === "en" ? "Plugin Blueprints" : "插件制造蓝图"}</strong><span>${settings.language === "en" ? "Craft before fitting" : "先制造，再安装"}</span></div>
+    <div class="plugin-grid">
+      ${Object.entries(PLUGINS).map(([id, raw]) => {
+        const plugin = localizedPlugin(id);
+        const canCraft = canCraftPlugin(id);
+        const count = store[id] || 0;
+        const installed = fitted[raw.slot] === id;
+        return `
+          <article class="plugin-card" style="--plugin-color:${raw.color}">
+            <header><i>${raw.icon}</i><span><small>${plugin.slotName} · ${raw.rarity}</small><strong>${plugin.name}</strong></span><b>${count}</b></header>
+            <p>${settings.language === "en" ? raw.description : raw.description}</p>
+            <div class="craft-recipe">${pluginInputText(raw.inputs)}</div>
+            <footer>
+              <button data-craft-plugin="${id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Manufacture" : "制造"}</button>
+              <button data-install-plugin="${id}" ${count > 0 && !installed ? "" : "disabled"}>${installed ? (settings.language === "en" ? "Installed" : "已安装") : (settings.language === "en" ? "Fit" : "安装")}</button>
+            </footer>
+          </article>`;
+      }).join("")}
+    </div>`;
+
   $("#upgradeGrid").innerHTML = Object.entries(UPGRADES).map(([key, upgrade]) => {
     const level = state.upgrades[key];
     const cost = Math.round(upgrade.baseCost * Math.pow(1.7, level));
@@ -2838,6 +3205,9 @@ function renderUpgrades() {
       </article>`;
   }).join("");
   $$("[data-upgrade]").forEach(button => button.addEventListener("click", () => buyUpgrade(button.dataset.upgrade)));
+  $$("[data-craft-plugin]").forEach(button => button.addEventListener("click", () => craftPlugin(button.dataset.craftPlugin)));
+  $$("[data-install-plugin]").forEach(button => button.addEventListener("click", () => installPlugin(button.dataset.installPlugin)));
+  $$("[data-uninstall-plugin]").forEach(button => button.addEventListener("click", () => uninstallPlugin(button.dataset.uninstallPlugin)));
 }
 
 function storyMetric(checkId) {
@@ -3103,11 +3473,15 @@ function renderHangar() {
       return `<span class="${enough ? "" : "missing"}">${localizedGood(key).name} ${localItemAmount(key)}/${amount}</span>`;
     }).join(" · ");
     const canCraft = Object.entries(recipe.inputs).every(([key, amount]) => localItemAmount(key) >= amount);
+    const outputAmount = craftedOutputAmount(recipe);
+    const outputBonus = outputAmount - recipe.output.amount;
+    const industry = STATION_INDUSTRY[state.currentSystem];
     return `
       <article class="craft-card">
         <h4>${recipe.name}</h4>
         <p>${recipe.description}</p>
-        <div class="craft-recipe">${inputText}<br><b>→ ${localizedGood(recipe.output.item).name} × ${recipe.output.amount}</b></div>
+        <div class="craft-recipe">${inputText}<br><b>→ ${localizedGood(recipe.output.item).name} × ${outputAmount}</b></div>
+        <small class="station-craft-bonus ${outputBonus > 0 ? "active" : ""}">${settings.language === "en" ? industry.en : industry.name}${outputBonus > 0 ? ` · +${outputBonus} ${settings.language === "en" ? "local yield" : "本地产出"}` : ""}</small>
         <button data-craft-recipe="${recipe.id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Craft to Station Storage" : "制作到本站仓库"}</button>
       </article>`;
   }).join("");
@@ -3169,16 +3543,27 @@ function updateHud() {
   $("#shieldText").textContent = `${Math.ceil(state.shield)} / ${stats.maxShield}`;
   $("#hullText").textContent = `${Math.ceil(state.hull)} / ${stats.maxHull}`;
   $("#fuelText").textContent = `${state.fuel} / ${state.maxFuel}`;
-  $("#shieldBar").style.width = `${state.shield / stats.maxShield * 100}%`;
   const shieldPct = Math.round(state.shield / stats.maxShield * 100);
+  const hullPct = Math.round(state.hull / stats.maxHull * 100);
   $("#shieldOrb").style.setProperty("--shield", `${shieldPct}%`);
-  $("#shieldOrbValue").textContent = `${shieldPct}%`;
-  $("#hullBar").style.width = `${state.hull / stats.maxHull * 100}%`;
-  $("#fuelBar").style.width = `${state.fuel / state.maxFuel * 100}%`;
-  $("#damageStat").textContent = Math.round(stats.damage);
+  $("#shieldOrb").style.setProperty("--hull", `${hullPct}%`);
+  $("#shieldOrbValue").textContent = shieldPct;
+  $("#hullOrbValue").textContent = hullPct;
   $("#cargoStat").textContent = `${cargoUsed()}/${stats.cargo}`;
-  $("#speedStat").textContent = Math.round(stats.speed);
+  const vitalStatus = $("#shipVitalStatus");
+  if (hullPct <= 30) {
+    vitalStatus.className = "critical";
+    vitalStatus.innerHTML = "<i></i>危险";
+  } else if (shieldPct <= 25) {
+    vitalStatus.className = "warning";
+    vitalStatus.innerHTML = "<i></i>护盾低";
+  } else {
+    vitalStatus.className = "";
+    vitalStatus.innerHTML = `<i></i>${settings.language === "en" ? "Stable" : "稳定"}`;
+  }
   $("#boostStatus").textContent = `${Math.round(player.boostEnergy)}%`;
+  const weaponLabel = $("#combatHud .ability:first-child span");
+  if (weaponLabel) weaponLabel.textContent = stats.weaponLabel;
   $("#weaponCooldown").textContent = player.fireCooldown > 0 ? `${player.fireCooldown.toFixed(1)}s` : (UI_TEXT[settings.language] || UI_TEXT.zh).ready;
   updateSystemHud();
   updateAIPopulationHud();
@@ -3290,6 +3675,7 @@ function draw() {
   world.enemies.forEach(drawEnemy);
   aiPilots.filter(pilot => pilot.system === state.currentSystem).forEach(drawAIPilot);
   world.particles.forEach(drawParticle);
+  world.combatText.forEach(drawCombatText);
   if (!state.docked) drawPlayer();
   drawRadar();
   updateTargetHud();
@@ -3659,9 +4045,19 @@ function drawEnemy(enemy) {
   ctx.closePath(); ctx.fill();
   ctx.globalAlpha = 1;
   ctx.fillStyle = "#ffd2d9"; ctx.fillRect(-2, -5, 4, 10);
+  if (enemy.shield > 0) {
+    ctx.rotate(-(enemy.angle + Math.PI / 2));
+    ctx.strokeStyle = "rgba(83,232,255,.58)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.arc(0, 0, enemy.r + 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
   ctx.shadowBlur = 0; ctx.restore();
-  ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(p.x - 22, p.y - enemy.r - 13, 44, 3);
-  ctx.fillStyle = spec.color; ctx.fillRect(p.x - 22, p.y - enemy.r - 13, 44 * enemy.hp / enemy.maxHp, 3);
+  ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(p.x - 22, p.y - enemy.r - 17, 44, 3);
+  ctx.fillStyle = "#53e8ff"; ctx.fillRect(p.x - 22, p.y - enemy.r - 17, 44 * (enemy.maxShield ? enemy.shield / enemy.maxShield : 0), 3);
+  ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(p.x - 22, p.y - enemy.r - 12, 44, 3);
+  ctx.fillStyle = spec.color; ctx.fillRect(p.x - 22, p.y - enemy.r - 12, 44 * enemy.hp / enemy.maxHp, 3);
   if (enemy.state !== "patrol") {
     ctx.textAlign = "center"; ctx.font = "7px Microsoft YaHei"; ctx.fillStyle = spec.color;
     ctx.fillText(enemy.state === "attack" ? "攻击" : enemy.state === "retreat" ? "撤退" : "锁定", p.x, p.y + enemy.r + 14);
@@ -3670,8 +4066,9 @@ function drawEnemy(enemy) {
 
 function drawBullet(bullet, color) {
   const p = worldToScreen(bullet.x, bullet.y);
-  ctx.fillStyle = color;
-  ctx.shadowColor = color;
+  const bulletColor = bullet.color || color;
+  ctx.fillStyle = bulletColor;
+  ctx.shadowColor = bulletColor;
   ctx.shadowBlur = 10;
   ctx.beginPath(); ctx.arc(p.x, p.y, bullet.r, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 0;
@@ -3692,6 +4089,20 @@ function drawParticle(particle) {
   ctx.fillStyle = particle.color;
   ctx.beginPath(); ctx.arc(p.x, p.y, particle.size, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
+}
+
+function drawCombatText(text) {
+  const p = worldToScreen(text.x, text.y);
+  const alpha = clamp(text.life / text.maxLife, 0, 1);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = "center";
+  ctx.font = `${text.critical ? 700 : 600} ${text.critical ? 13 : 11}px ui-monospace, monospace`;
+  ctx.fillStyle = text.color;
+  ctx.shadowColor = text.color;
+  ctx.shadowBlur = text.critical ? 9 : 5;
+  ctx.fillText(`${text.layer === "shield" ? "◇" : "▰"} ${text.amount}`, p.x, p.y);
+  ctx.restore();
 }
 
 function drawRadar() {
@@ -3740,11 +4151,24 @@ function updateTargetHud() {
   }
   $("#targetPanel").classList.remove("hidden");
   const isOutpost = target.type === "outpost";
+  const stats = shipStats();
+  const targetSpec = isOutpost
+    ? { shieldResist: { thermal: .18, explosive: .1 }, hullResist: { kinetic: .22, explosive: .16 } }
+    : (ENEMY_TYPES[target.type] || ENEMY_TYPES.interceptor);
   $("#targetType").textContent = isOutpost ? "敌对设施" : `敌对舰船 · ${target.state === "patrol" ? "巡逻" : "交战"}`;
   $("#targetName").textContent = target.name;
-  const healthRatio = isOutpost && target.shield > 0 ? target.shield / target.maxShield : target.hp / target.maxHp;
-  $("#targetHealthBar").style.width = `${healthRatio * 100}%`;
-  $("#targetHealthBar").style.background = isOutpost && target.shield > 0 ? "#a980ff" : "#ff617b";
+  const shieldRatio = target.maxShield ? target.shield / target.maxShield : 0;
+  const hullRatio = target.maxHp ? target.hp / target.maxHp : 0;
+  $("#targetShieldBar").style.width = `${clamp(shieldRatio * 100, 0, 100)}%`;
+  $("#targetHealthBar").style.width = `${clamp(hullRatio * 100, 0, 100)}%`;
+  $("#targetShieldValue").textContent = `${Math.ceil(target.shield || 0)} / ${target.maxShield || 0}`;
+  $("#targetHullValue").textContent = `${Math.ceil(target.hp || 0)} / ${target.maxHp || 0}`;
+  const activeLayer = target.shield > 0 ? "shield" : "hull";
+  const activeDamage = DAMAGE_TYPES[stats.damageType] || DAMAGE_TYPES.plasma;
+  const effectiveness = damageLayerMultiplier(stats.damageType, activeLayer, targetSpec);
+  $("#targetDefenseProfile").textContent = activeLayer === "shield" ? "当前护盾 · 热能有效" : "当前装甲 · 动能有效";
+  $("#targetWeaponAdvice").textContent = `${activeDamage.name} ×${effectiveness.toFixed(2)}`;
+  $("#targetWeaponAdvice").style.color = effectiveness >= 1.15 ? "#51e7a6" : effectiveness < .9 ? "#ff9d66" : "#ffd36d";
   $("#targetDistance").textContent = `${Math.round(closest)}m`;
   const stateText =
     closest <= target.weaponRange ? "武器射程内" :
@@ -3928,6 +4352,8 @@ window.__game = {
   get audioEngine() { return audioEngine; },
   systems: SYSTEMS,
   goods: GOODS,
+  damageTypes: DAMAGE_TYPES,
+  stationIndustry: STATION_INDUSTRY,
   undock,
   dock,
   jumpTo,
@@ -3938,9 +4364,12 @@ window.__game = {
   createAIPilots,
   runAIEconomicAction,
   damagePlayer,
+  applyDamageToEnemy,
   damageOutpost,
   destroyOutpost,
   spawnPirateOutpost,
+  shipStats,
+  craftedOutputAmount,
   resetSave() { localStorage.removeItem(SAVE_KEY); location.reload(); },
   simulateMarkets,
   renderStation

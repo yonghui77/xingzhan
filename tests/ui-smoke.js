@@ -65,6 +65,7 @@ let browser;
     docked: window.__game.state.docked,
     system: window.__game.state.currentSystem,
     marketItems: document.querySelectorAll(".market-list-item").length,
+    goodsCount: Object.keys(window.__game.goods).length,
     sellOrders: document.querySelectorAll("#sellOrders .order-row").length,
     aiCount: window.__game.aiPilots.length
   }));
@@ -178,7 +179,7 @@ let browser;
   if (!helpVisible) throw new Error("First-run help was not shown");
   if (!hubState.hubActive || hubState.modules < 7 || !hubState.storyPulse.includes("任务") || !hubState.accessLabels.includes("交易行") || !hubState.accessLabels.includes("设置") || !hubState.undockCompact || hubState.bodyScroll) throw new Error(`Station hub failed: ${JSON.stringify(hubState)}`);
   if (!hubState.shipModel.wingWidthOk || !hubState.shipModel.wingAttachedOk || !hubState.shipModel.symmetricOk) throw new Error(`Docked ship model failed: ${JSON.stringify(hubState.shipModel)}`);
-  if (!initial.docked || initial.system !== "aurora" || initial.marketItems !== 5 || initial.sellOrders !== 6 || initial.aiCount !== 16) throw new Error(`Invalid initial state: ${JSON.stringify(initial)}`);
+  if (!initial.docked || initial.system !== "aurora" || initial.marketItems !== initial.goodsCount || initial.sellOrders !== 6 || initial.aiCount !== 16) throw new Error(`Invalid initial state: ${JSON.stringify(initial)}`);
   if (!(afterBuy.credits < initial.credits) || afterBuy.ore !== 1) throw new Error(`Market buy failed: ${JSON.stringify(afterBuy)}`);
   if (afterMine <= afterBuy.ore) throw new Error(`Mining did not add cargo: ${afterMine}`);
   if (miningPanelVisible) throw new Error("Mining panel should close after depletion");

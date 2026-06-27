@@ -36,21 +36,6 @@
     </header>
 
     <aside class="left-hud">
-      <section class="hud-card ship-card">
-        <div class="card-title">
-          <div><p>SHIP STATUS</p><strong id="shipName">拓荒者级</strong></div>
-          <div class="shield-orb" id="shieldOrb"><i></i><b id="shieldOrbValue">100%</b></div>
-        </div>
-        <div class="status-line"><span>护盾</span><b id="shieldText">100 / 100</b><div><i id="shieldBar"></i></div></div>
-        <div class="status-line armor"><span>装甲</span><b id="hullText">100 / 100</b><div><i id="hullBar"></i></div></div>
-        <div class="status-line fuel"><span>跃迁燃料</span><b id="fuelText">8 / 8</b><div><i id="fuelBar"></i></div></div>
-        <div class="ship-stats">
-          <span>火力 <b id="damageStat">12</b></span>
-          <span>货舱 <b id="cargoStat">0/30</b></span>
-          <span>速度 <b id="speedStat">240</b></span>
-        </div>
-      </section>
-
       <section id="tutorialCard" class="hud-card tutorial-card">
         <div class="card-title"><div><p>FLIGHT ACADEMY</p><strong id="tutorialTitle">飞行学院</strong></div><button id="skipTutorialBtn" class="mini-btn">跳过</button></div>
         <div id="tutorialContent"></div>
@@ -90,10 +75,34 @@
     </aside>
 
     <div id="combatHud" class="combat-hud">
-      <div class="ability"><kbd>鼠标</kbd><span>脉冲炮</span><small id="weaponCooldown">就绪</small></div>
-      <div class="ability"><kbd>E</kbd><span>采矿 / 停靠</span><small>交互</small></div>
-      <div class="ability"><kbd>Shift</kbd><span>推进器</span><small id="boostStatus">可用</small></div>
-      <div class="ability"><kbd>M</kbd><span>星图</span><small>跃迁</small></div>
+      <div class="combat-wing left">
+        <div class="ability"><kbd>鼠标</kbd><span>脉冲炮</span><small id="weaponCooldown">就绪</small></div>
+        <div class="ability"><kbd>E</kbd><span>采矿 / 停靠</span><small>交互</small></div>
+      </div>
+      <section id="shipVitals" class="ship-vitals" aria-label="舰船状态">
+        <div class="vital-title"><strong id="shipName">拓荒者级</strong><span id="shipVitalStatus"><i></i>稳定</span></div>
+        <div class="vital-rings" id="shieldOrb">
+          <div class="hull-ring">
+            <div class="vital-core">
+              <i class="vital-ship"><b></b></i>
+              <span><b id="shieldOrbValue">100</b><small>护盾</small></span>
+              <span><b id="hullOrbValue">100</b><small>装甲</small></span>
+            </div>
+          </div>
+        </div>
+        <div class="vital-readouts">
+          <span class="shield-value">盾 <b id="shieldText">100 / 100</b></span>
+          <span class="hull-value">甲 <b id="hullText">100 / 100</b></span>
+        </div>
+        <div class="vital-secondary">
+          <span>燃料 <b id="fuelText">8 / 8</b></span>
+          <span>货舱 <b id="cargoStat">0/30</b></span>
+        </div>
+      </section>
+      <div class="combat-wing right">
+        <div class="ability"><kbd>Shift</kbd><span>推进器</span><small id="boostStatus">可用</small></div>
+        <div class="ability"><kbd>M</kbd><span>星图</span><small>跃迁</small></div>
+      </div>
     </div>
 
     <div id="interactionPrompt" class="interaction-prompt hidden"></div>
@@ -105,7 +114,11 @@
     </div>
     <div id="targetPanel" class="target-panel hidden">
       <div><span id="targetType">目标</span><strong id="targetName">—</strong></div>
-      <div class="target-health"><i id="targetHealthBar"></i></div>
+      <div class="target-layer-label"><small>护盾</small><small id="targetShieldValue">0 / 0</small></div>
+      <div class="target-health shield"><i id="targetShieldBar"></i></div>
+      <div class="target-layer-label"><small>装甲</small><small id="targetHullValue">0 / 0</small></div>
+      <div class="target-health hull"><i id="targetHealthBar"></i></div>
+      <div class="target-profile"><small id="targetDefenseProfile">抗性分析中</small><b id="targetWeaponAdvice">—</b></div>
       <div class="target-range-row"><small id="targetDistance">0m</small><small id="targetState">未锁定</small></div>
       <div class="range-bands"><i id="detectBand"></i><i id="lockBand"></i><i id="weaponBand"></i></div>
     </div>
@@ -214,7 +227,7 @@
           <div class="market-terminal">
             <aside class="market-browser">
               <label class="market-search"><span>⌕</span><input id="marketSearch" type="search" placeholder="搜索商品"></label>
-              <div class="market-group-title">市场分类 <b>5</b></div>
+              <div class="market-group-title">市场分类 <b id="marketCategoryCount">0</b></div>
               <div id="marketItemList" class="market-item-list"></div>
             </aside>
             <main class="market-detail">
@@ -273,7 +286,11 @@
               <p>升级不会简单制造等级碾压，而是提高效率并形成不同经营路线。</p>
               <div class="ship-schematic"><div class="core"></div><i class="wing left"></i><i class="wing right"></i></div>
             </div>
-            <div id="upgradeGrid" class="upgrade-grid"></div>
+            <div class="shipyard-workbench">
+              <div id="fittingPanel" class="fitting-panel"></div>
+              <div id="pluginForge" class="plugin-forge"></div>
+              <div id="upgradeGrid" class="upgrade-grid"></div>
+            </div>
           </div>
         </div>
         <div id="contractsTab" class="station-tab">
@@ -462,7 +479,7 @@
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">CLEAN STARPORT · BUILD 0.41</div>
+    <div class="version">CIRCULAR VITALS · BUILD 0.44</div>
   </div>
   <script src="game.js"></script>
 </body>
