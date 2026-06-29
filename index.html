@@ -76,8 +76,9 @@
 
     <div id="combatHud" class="combat-hud">
       <div class="combat-wing left">
-        <div class="ability"><kbd>鼠标</kbd><span>脉冲炮</span><small id="weaponCooldown">就绪</small></div>
-        <div class="ability"><kbd>E</kbd><span>采矿 / 停靠</span><small>交互</small></div>
+        <button id="weaponSwitchBtn" class="ability weapon-switch" type="button" data-control-key="q"><kbd>Q</kbd><span id="activeWeaponName">脉冲炮</span><small id="weaponCooldown">就绪</small></button>
+        <button id="fireModeBtn" class="fire-mode-chip" type="button" data-control-key="r" data-fire-mode="balanced"><kbd>R</kbd><span id="fireModeName">均衡</span></button>
+        <button id="contextActionBtn" class="ability context-action" type="button" data-control-key="e" disabled><kbd>E</kbd><span id="contextActionName">扫描交互</span><small id="contextActionHint">靠近可交互目标</small></button>
       </div>
       <section id="shipVitals" class="ship-vitals" aria-label="舰船状态">
         <div class="vital-title"><strong id="shipName">拓荒者级</strong><span id="shipVitalStatus"><i></i>稳定</span></div>
@@ -98,14 +99,21 @@
           <span>燃料 <b id="fuelText">8 / 8</b></span>
           <span>货舱 <b id="cargoStat">0/30</b></span>
         </div>
+        <div class="weapon-resources">
+          <label><span>电容</span><i><b id="capacitorBar"></b></i><em id="capacitorText">100</em></label>
+          <label class="heat"><span>热量</span><i><b id="weaponHeatBar"></b></i><em id="weaponHeatText">0</em></label>
+        </div>
       </section>
       <div class="combat-wing right">
-        <div class="ability"><kbd>Shift</kbd><span>推进器</span><small id="boostStatus">可用</small></div>
-        <div class="ability"><kbd>M</kbd><span>星图</span><small>跃迁</small></div>
+        <div class="ability" data-control-key="shift"><kbd>Shift</kbd><span>推进器</span><small id="boostStatus">可用</small></div>
+        <div class="ability" data-control-key="m"><kbd>M</kbd><span>星图</span><small>跃迁</small></div>
       </div>
     </div>
 
-    <div id="interactionPrompt" class="interaction-prompt hidden"></div>
+    <div id="interactionPrompt" class="interaction-prompt hidden" role="status" aria-live="polite">
+      <kbd>E</kbd>
+      <span><strong id="interactionAction">交互</strong><small id="interactionDetail">靠近目标</small></span>
+    </div>
     <div id="miningPanel" class="mining-panel hidden">
       <div class="mining-head"><span>采矿束已锁定</span><b id="miningRange">0m</b></div>
       <strong id="miningTargetName">钛辉矿脉</strong>
@@ -187,7 +195,7 @@
                 <div class="hangar-gate"></div>
                 <div class="ship-holo-ring"></div>
                 <div class="docked-ship">
-                  <i class="ship-keel"></i><i class="ship-nose"></i><i class="ship-core"></i><i class="ship-spine"></i><i class="ship-cockpit"></i><i class="ship-wing left"></i><i class="ship-wing right"></i><i class="ship-engine left"></i><i class="ship-engine right"></i>
+                  <i class="ship-keel"></i><i class="ship-nose"></i><i class="ship-core"></i><i class="ship-spine"></i><i class="ship-cockpit"></i><i class="ship-wing left"></i><i class="ship-wing right"></i><i class="ship-engine left"></i><i class="ship-engine right"></i><i class="ship-engine center"></i><i class="ship-engine outer-left"></i><i class="ship-engine outer-right"></i>
                 </div>
                 <div class="dock-beam"></div>
                 <div class="ship-label-card"><span id="hubShipClass">PIONEER CLASS</span><b id="hubShipIntegrity">护盾 100%</b></div>
@@ -282,9 +290,14 @@
         <div id="shipyardTab" class="station-tab">
           <div class="upgrade-layout">
             <div class="upgrade-intro">
-              <p>SHIP FITTING</p><h2>拓荒者级模块舱</h2>
-              <p>升级不会简单制造等级碾压，而是提高效率并形成不同经营路线。</p>
-              <div class="ship-schematic"><div class="core"></div><i class="wing left"></i><i class="wing right"></i></div>
+              <p>SHIP FITTING</p><h2 id="shipyardShipTitle">拓荒者级模块舱</h2>
+              <p id="shipyardShipDescription">选择舰体定位，再通过插件和升级形成自己的经营与战斗路线。</p>
+              <div class="ship-schematic">
+                <div id="shipyardHullModel" class="docked-ship" data-hull="pioneer">
+                  <i class="ship-keel"></i><i class="ship-nose"></i><i class="ship-core"></i><i class="ship-spine"></i><i class="ship-cockpit"></i><i class="ship-wing left"></i><i class="ship-wing right"></i><i class="ship-engine left"></i><i class="ship-engine right"></i><i class="ship-engine center"></i><i class="ship-engine outer-left"></i><i class="ship-engine outer-right"></i>
+                </div>
+              </div>
+              <div id="shipHullRoster" class="ship-hull-roster"></div>
             </div>
             <div class="shipyard-workbench">
               <div id="fittingPanel" class="fitting-panel"></div>
@@ -295,6 +308,7 @@
         </div>
         <div id="contractsTab" class="station-tab">
           <div class="contracts-head"><div><p>AVAILABLE CONTRACTS</p><h2>本地合约</h2></div><span>完成合约可获得 ISK 与声望</span></div>
+          <div id="careerJournal" class="career-journal"></div>
           <div id="storyPanel" class="story-panel"></div>
           <div id="contractGrid" class="contract-grid"></div>
         </div>
@@ -362,6 +376,8 @@
           <div><kbd>E</kbd><strong>采矿与停靠</strong><span>靠近矿石持续采集，靠近空间站停靠。</span></div>
           <div><kbd>Shift</kbd><strong>推进加速</strong><span>消耗推进能量快速脱离敌人或赶路。</span></div>
           <div><kbd>M</kbd><strong>打开星图</strong><span>选择相邻星系跃迁，每次消耗1燃料。</span></div>
+          <div><kbd>Q / R</kbd><strong>武器控制</strong><span>Q 切换武器，R 切换射击模式；底部对应按钮也可直接点击。</span></div>
+          <div><kbd>任务</kbd><strong>职业日志</strong><span>四条路线同时累计，追踪只改变显示目标，不会覆盖其他进度或操控市场。</span></div>
         </div>
         <button id="startBtn" class="button primary">开始航行</button>
       </div>
@@ -479,7 +495,7 @@
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">VISUAL MARKET · BUILD 0.45</div>
+    <div class="version">MULTI-HULL FLEET · BUILD 0.50</div>
   </div>
   <script src="game.js"></script>
 </body>

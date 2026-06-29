@@ -31,7 +31,7 @@ let browser;
     return {
       size: document.body.dataset.uiSize,
       feedFont: font(".feed-item"),
-      marketSmallFont: font(".market-list-item small"),
+      marketSmallFont: font(".market-list-item strong"),
       orderFont: font(".order-row"),
       cardTitleFont: font(".card-title strong"),
       stationFits: station.left >= 0 && station.right <= innerWidth && station.top >= 0 && station.bottom <= innerHeight,
@@ -60,7 +60,7 @@ let browser;
       quality: document.body.dataset.quality,
       language: document.documentElement.lang,
       feedFont: font(".feed-item"),
-      marketSmallFont: font(".market-list-item small"),
+      marketSmallFont: font(".market-list-item strong"),
       cardTitleFont: font(".card-title strong"),
       canvasWidth: document.querySelector("#gameCanvas").width,
       settings: window.__game.settings,

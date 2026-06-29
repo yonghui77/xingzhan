@@ -64,6 +64,41 @@ const UPGRADES = {
   hull: { name: "纳米复合装甲", description: "每级增加45点装甲，降低舰船损毁风险。", baseCost: 2100, max: 5 }
 };
 
+const SHIP_HULLS = {
+  pioneer: {
+    name: "拓荒者级", en: "Pioneer", role: "多用途护卫舰", roleEn: "Multipurpose Frigate",
+    description: "均衡、可靠的边境起步舰，适合学习采矿、贸易和基础战斗。",
+    descriptionEn: "A balanced frontier starter hull for mining, trading and basic combat.",
+    color: "#53e8ff", accent: "#d9fbff", cost: 0, inputs: {},
+    stats: { maxShield: 100, maxHull: 100, damage: 12, cargo: 30, speed: 240, miningRate: 1, shieldRegen: 5, boostRecovery: 18, maxCapacitor: 100, fuel: 8, radius: 17 },
+    visual: { model: "pioneer", engines: [-9, 9], scale: 1 }
+  },
+  courier: {
+    name: "信使级", en: "Courier", role: "高速运输舰", roleEn: "Fast Hauler",
+    description: "细长舰体与三联推进器带来高航速和大货舱，但正面防御较弱。",
+    descriptionEn: "A slender triple-engine hauler with high speed and cargo capacity but lighter defenses.",
+    color: "#51e7a6", accent: "#dfffea", cost: 6200, inputs: { alloy: 6, superconductor: 2, capacitor: 1 },
+    stats: { maxShield: 82, maxHull: 78, damage: 10, cargo: 62, speed: 315, miningRate: .8, shieldRegen: 4.2, boostRecovery: 26, maxCapacitor: 105, fuel: 10, radius: 15 },
+    visual: { model: "courier", engines: [-11, 0, 11], scale: .94 }
+  },
+  prospector: {
+    name: "开拓者级", en: "Prospector", role: "工业采矿舰", roleEn: "Industrial Miner",
+    description: "宽体双臂工业舰，拥有高采矿效率、货舱和装甲，机动性较低。",
+    descriptionEn: "A broad industrial hull with strong mining yield, cargo and armor at the cost of agility.",
+    color: "#ffc45c", accent: "#fff0c4", cost: 8500, inputs: { alloy: 10, ceramic: 4, lens: 2 },
+    stats: { maxShield: 108, maxHull: 138, damage: 11, cargo: 76, speed: 188, miningRate: 1.7, shieldRegen: 5.4, boostRecovery: 14, maxCapacitor: 115, fuel: 7, radius: 22 },
+    visual: { model: "prospector", engines: [-16, 16], scale: 1.08 }
+  },
+  vanguard: {
+    name: "堡垒级", en: "Vanguard", role: "重型战斗舰", roleEn: "Heavy Gunship",
+    description: "厚重楔形装甲与四联引擎构成正面火力平台，代价是货舱和巡航速度。",
+    descriptionEn: "A heavy wedge-shaped gunship with four engines and strong frontal durability.",
+    color: "#ff617b", accent: "#ffd8df", cost: 12000, inputs: { alloy: 14, ceramic: 6, guidance: 4, capacitor: 2 },
+    stats: { maxShield: 155, maxHull: 168, damage: 15, cargo: 24, speed: 202, miningRate: .72, shieldRegen: 7, boostRecovery: 16, maxCapacitor: 125, fuel: 8, radius: 24 },
+    visual: { model: "vanguard", engines: [-18, -6, 6, 18], scale: 1.12 }
+  }
+};
+
 const CONTRACT_LIBRARY = [
   { id: "mine", type: "开采", title: "工业原料短缺", description: "开采并带回钛辉矿，支援本地制造链。", item: "ore", amount: 12, reward: 1450 },
   { id: "hunt", type: "战斗", title: "清剿边境海盗", description: "摧毁海盗舰船，降低运输航线风险。", amount: 5, reward: 2600 },
@@ -113,6 +148,49 @@ const STORY_CHAPTERS = [
   }
 ];
 
+const CAREER_PATHS = {
+  explorer: {
+    name: "深空探索者", en: "Deep-space Explorer", icon: "✦", color: "#a980ff",
+    description: "通过跃迁、实地访问和情报回收建立自己的边境航图。",
+    descriptionEn: "Build your frontier chart through jumps, physical visits and recovered intel.",
+    goals: [
+      { metric: "jumps", label: "完成星系跃迁", en: "Complete system jumps", target: 3 },
+      { metric: "visited", label: "访问不同星系", en: "Visit different systems", target: 3 },
+      { metric: "intel", label: "回收海盗情报", en: "Recover pirate intel", target: 2 }
+    ]
+  },
+  industrialist: {
+    name: "星港工业家", en: "Station Industrialist", icon: "◆", color: "#39ddff",
+    description: "采集、加工并制造真正进入本地库存的材料和插件。",
+    descriptionEn: "Gather, process and manufacture materials and plugins that physically enter local inventory.",
+    goals: [
+      { metric: "mined", label: "采集资源", en: "Mine resources", target: 20 },
+      { metric: "crafted", label: "完成材料制作", en: "Complete material jobs", target: 3 },
+      { metric: "pluginsCrafted", label: "制造舰船插件", en: "Manufacture ship plugins", target: 2 }
+    ]
+  },
+  trader: {
+    name: "独立贸易商", en: "Independent Trader", icon: "◇", color: "#51e7a6",
+    description: "观察本地供需、建立订单并亲自运输货物，不提供路线利润答案。",
+    descriptionEn: "Read local supply, place orders and haul goods yourself without a route-profit answer.",
+    goals: [
+      { metric: "tradeRevenue", label: "累计销售收入", en: "Accumulate sales revenue", target: 5000, suffix: " ISK" },
+      { metric: "ordersCreated", label: "创建限价卖单", en: "Create limit sell orders", target: 2 },
+      { metric: "remoteQuotes", label: "查看异地行情", en: "Inspect remote quotes", target: 1 }
+    ]
+  },
+  enforcer: {
+    name: "边境执法者", en: "Frontier Enforcer", icon: "➤", color: "#ff617b",
+    description: "清理敌对舰船与海盗据点，承担高风险区域的战斗工作。",
+    descriptionEn: "Clear hostile ships and pirate outposts across high-risk systems.",
+    goals: [
+      { metric: "kills", label: "击毁敌对舰船", en: "Destroy hostile ships", target: 5 },
+      { metric: "outposts", label: "摧毁海盗据点", en: "Destroy pirate outposts", target: 1 },
+      { metric: "reputation", label: "完成公开合约", en: "Complete public contracts", target: 2 }
+    ]
+  }
+};
+
 const CRAFTING_RECIPES = [
   { id: "ammo_pack", name: "导弹弹药补给", description: "将矿物和残骸加工成前线消耗品。", inputs: { ore: 3, salvage: 1 }, output: { item: "ammo", amount: 6 } },
   { id: "jump_fuel", name: "跃迁燃料精炼", description: "压缩晶体能量，制造可装填燃料。", inputs: { ore: 2, crystal: 1 }, output: { item: "fuel", amount: 4 } },
@@ -145,19 +223,19 @@ const PLUGINS = {
     name: "轻型磁轨炮", en: "Light Railgun", slot: "weapon", icon: "━", color: "#8edff2", rarity: "T1",
     description: "高速动能炮，擅长击穿装甲，对护盾效率较低。",
     inputs: { alloy: 3, guidance: 1, salvage: 2 },
-    stats: { weaponKind: "railgun", damageType: "kinetic", damageMult: 1.25, fireRateMult: .92, projectileSpeed: 900, bulletLife: 1.05, projectileRadius: 3.2, spread: .012, heat: .56, weaponColor: "#8edff2", weaponLabel: "磁轨炮" }
+    stats: { weaponKind: "railgun", damageType: "kinetic", damageMult: 1.25, fireRateMult: .92, projectileSpeed: 900, bulletLife: 1.05, projectileRadius: 3.2, spread: .012, heat: .56, weaponHeat: 9, capacitorCost: 3, weaponColor: "#8edff2", weaponLabel: "磁轨炮" }
   },
   pulse_laser: {
     name: "脉冲激光器", en: "Pulse Laser", slot: "weapon", icon: "✦", color: "#a4f3ff", rarity: "T1",
     description: "高精度热能武器，快速瓦解护盾，不消耗弹药但发热更高。",
     inputs: { lens: 1, superconductor: 2, capacitor: 1 },
-    stats: { weaponKind: "laser", damageType: "thermal", damageMult: 1.08, fireRateMult: .72, projectileSpeed: 1080, bulletLife: .78, projectileRadius: 2.4, spread: .004, heat: .78, weaponColor: "#a4f3ff", weaponLabel: "脉冲激光" }
+    stats: { weaponKind: "laser", damageType: "thermal", damageMult: 1.08, fireRateMult: .72, projectileSpeed: 1080, bulletLife: .78, projectileRadius: 2.4, spread: .004, heat: .78, weaponHeat: 13, capacitorCost: 10, weaponColor: "#a4f3ff", weaponLabel: "脉冲激光" }
   },
   missile_pod: {
     name: "轻型导弹仓", en: "Light Missile Pod", slot: "weapon", icon: "➤", color: "#ff617b", rarity: "T1",
     description: "远程爆炸武器，造成范围伤害，每次发射消耗 1 单位导弹弹药。",
     inputs: { alloy: 2, guidance: 3, ammo: 8 },
-    stats: { weaponKind: "missile", damageType: "explosive", damageMult: 1.95, fireRateMult: 2.15, projectileSpeed: 520, bulletLife: 2.25, projectileRadius: 5.5, splashRadius: 92, spread: .02, heat: .68, ammoItem: "ammo", ammoCost: 1, weaponColor: "#ff617b", weaponLabel: "轻型导弹" }
+    stats: { weaponKind: "missile", damageType: "explosive", damageMult: 1.95, fireRateMult: 2.15, projectileSpeed: 520, bulletLife: 2.25, projectileRadius: 5.5, splashRadius: 92, spread: .02, heat: .68, weaponHeat: 7, capacitorCost: 2, ammoItem: "ammo", ammoCost: 1, weaponColor: "#ff617b", weaponLabel: "轻型导弹" }
   },
   shield_amp: {
     name: "小型护盾增幅器", en: "Small Shield Amplifier", slot: "defense", icon: "⬡", color: "#53e8ff", rarity: "T1",
@@ -215,25 +293,25 @@ const ENEMY_TYPES = {
   scout: {
     name: "海盗侦察无人机", color: "#ffb45d", hp: 42, radius: 14, speed: 165,
     shieldRatio: .18, shieldResist: { thermal: .05 }, hullResist: { kinetic: .04 },
-    detection: 720, lock: 500, weapon: 220, optimal: 175, damage: 6, fireRate: 1.05, bulletSpeed: 430,
+    detection: 720, lock: 500, weapon: 220, optimal: 175, damage: 6, damageType: "thermal", bulletColor: "#ffb45d", fireRate: 1.05, bulletSpeed: 430,
     bounty: 55, salvage: [1, 2], cost: 8
   },
   interceptor: {
     name: "掠夺者截击舰", color: "#ff617b", hp: 68, radius: 18, speed: 178,
     shieldRatio: .42, shieldResist: { thermal: .12, explosive: .06 }, hullResist: { kinetic: .08 },
-    detection: 650, lock: 470, weapon: 285, optimal: 225, damage: 10, fireRate: 1.35, bulletSpeed: 410,
+    detection: 650, lock: 470, weapon: 285, optimal: 225, damage: 10, damageType: "kinetic", bulletColor: "#ff617b", fireRate: 1.35, bulletSpeed: 410,
     bounty: 95, salvage: [1, 3], cost: 14
   },
   missile: {
     name: "秃鹫级导弹舰", color: "#c46dff", hp: 82, radius: 21, speed: 108,
     shieldRatio: .62, shieldResist: { thermal: .2, explosive: .08 }, hullResist: { kinetic: .04 },
-    detection: 920, lock: 700, weapon: 590, optimal: 500, damage: 15, fireRate: 2.15, bulletSpeed: 285,
+    detection: 920, lock: 700, weapon: 590, optimal: 500, damage: 15, damageType: "explosive", bulletColor: "#c46dff", fireRate: 2.15, bulletSpeed: 285,
     bounty: 135, salvage: [2, 4], cost: 20
   },
   gunship: {
     name: "海盗重型炮舰", color: "#ff445f", hp: 148, radius: 27, speed: 82,
     shieldRatio: .28, shieldResist: { thermal: .08 }, hullResist: { kinetic: .18, explosive: .12 },
-    detection: 620, lock: 490, weapon: 370, optimal: 305, damage: 21, fireRate: 1.55, bulletSpeed: 350,
+    detection: 620, lock: 490, weapon: 370, optimal: 305, damage: 21, damageType: "kinetic", bulletColor: "#ff445f", fireRate: 1.55, bulletSpeed: 350,
     bounty: 185, salvage: [3, 6], cost: 28
   }
 };
@@ -317,8 +395,14 @@ const defaultState = () => ({
   maxFuel: 8,
   shield: 100,
   hull: 100,
+  capacitor: 100,
+  activeWeapon: "pulse",
+  fireMode: "balanced",
+  activeShip: "pioneer",
+  ownedShips: { pioneer: "active" },
+  shipLoadouts: {},
   upgrades: { weapon: 0, shield: 0, cargo: 0, engine: 0, mining: 0, hull: 0 },
-  stats: { kills: 0, mined: 0, tradeRevenue: 0, jumps: 0, deaths: 0, intel: 0, outposts: 0 },
+  stats: { kills: 0, mined: 0, tradeRevenue: 0, jumps: 0, deaths: 0, intel: 0, outposts: 0, crafted: 0, pluginsCrafted: 0, ordersCreated: 0 },
   mission: { ...CONTRACT_LIBRARY[0], progress: 0 },
   markets: {},
   reputation: 0,
@@ -333,6 +417,7 @@ const defaultState = () => ({
   pluginInventory: {},
   fittedPlugins: { weapon: null, defense: null, engineering: null, industrial: null, electronic: null },
   story: { dockedOnce: true, viewedRemoteMarket: false },
+  career: { tracked: "explorer" },
   tutorial: { active: true, completed: false, step: 0, baselines: {}, enteredStep: null }
 });
 
@@ -353,6 +438,7 @@ let aiEconomyTimer = 0;
 let selectedMarketItem = "ore";
 let selectedMarketSystem = null;
 let marketSearchText = "";
+let selectedHullPreview = null;
 let marketChartHover = null;
 let marketChartCache = null;
 let shieldImpact = 0;
@@ -366,7 +452,8 @@ const pve = {
 
 const player = {
   x: 0, y: 320, vx: 0, vy: 0, angle: -Math.PI / 2, radius: 17,
-  fireCooldown: 0, boostEnergy: 100, shieldDelay: 0, invulnerable: 0
+  fireCooldown: 0, boostEnergy: 100, shieldDelay: 0, invulnerable: 0,
+  weaponHeat: 0, overheatLocked: false
 };
 const camera = { x: 0, y: 0 };
 const mouse = { x: innerWidth / 2, y: innerHeight / 2, down: false };
@@ -532,6 +619,9 @@ function loadGame() {
       ...base, ...saved,
       upgrades: { ...base.upgrades, ...(saved.upgrades || {}) },
       stats: { ...base.stats, ...(saved.stats || {}) },
+      activeShip: SHIP_HULLS[saved.activeShip] ? saved.activeShip : base.activeShip,
+      ownedShips: { ...base.ownedShips, ...(saved.ownedShips || {}) },
+      shipLoadouts: saved.shipLoadouts || {},
       systemThreat: { ...base.systemThreat, ...(saved.systemThreat || {}) },
       cargo: saved.cargo || {},
       markets: saved.markets || {},
@@ -542,6 +632,7 @@ function loadGame() {
       fittedPlugins: { ...base.fittedPlugins, ...(saved.fittedPlugins || {}) },
       visitedSystems: saved.visitedSystems || base.visitedSystems,
       story: { ...base.story, ...(saved.story || {}) },
+      career: { ...base.career, ...(saved.career || {}) },
       tutorial
     };
   } catch {
@@ -773,7 +864,119 @@ function localizedPlugin(id) {
 }
 
 function activeWeaponPlugin() {
+  if (state.activeWeapon !== "fitted") return null;
   return PLUGINS[state.fittedPlugins?.weapon] || null;
+}
+
+function activeShipHull() {
+  return SHIP_HULLS[state.activeShip] || SHIP_HULLS.pioneer;
+}
+
+function saveActiveShipLoadout() {
+  if (!state.shipLoadouts) state.shipLoadouts = {};
+  state.shipLoadouts[state.activeShip] = {
+    upgrades: { ...state.upgrades },
+    fittedPlugins: { ...state.fittedPlugins },
+    activeWeapon: state.activeWeapon
+  };
+}
+
+function loadShipLoadout(shipId) {
+  const loadout = state.shipLoadouts?.[shipId] || {};
+  state.upgrades = { ...defaultState().upgrades, ...(loadout.upgrades || {}) };
+  state.fittedPlugins = { ...defaultState().fittedPlugins, ...(loadout.fittedPlugins || {}) };
+  state.activeWeapon = loadout.activeWeapon === "fitted" && state.fittedPlugins.weapon ? "fitted" : "pulse";
+}
+
+function canCommissionShip(shipId) {
+  const hull = SHIP_HULLS[shipId];
+  return !!hull && !state.ownedShips?.[shipId] && state.credits >= hull.cost &&
+    Object.entries(hull.inputs).every(([key, amount]) => localItemAmount(key) >= amount);
+}
+
+function commissionShip(shipId) {
+  const hull = SHIP_HULLS[shipId];
+  if (!hull || state.ownedShips?.[shipId]) return;
+  if (state.credits < hull.cost) return toast(`建造委托需要 ${formatNumber(hull.cost)} ISK`);
+  const missing = Object.entries(hull.inputs).find(([key, amount]) => localItemAmount(key) < amount);
+  if (missing) return toast(`舰体材料不足：${localizedGood(missing[0]).name}`);
+  Object.entries(hull.inputs).forEach(([key, amount]) => removeLocalItems(key, amount));
+  state.credits -= hull.cost;
+  state.ownedShips = { ...(state.ownedShips || {}), [shipId]: state.currentSystem };
+  state.shipLoadouts = { ...(state.shipLoadouts || {}), [shipId]: { upgrades: { ...defaultState().upgrades }, fittedPlugins: { ...defaultState().fittedPlugins }, activeWeapon: "pulse" } };
+  addFeed(`在 <b>${localizedSystem(state.currentSystem).station}</b> 完成舰体建造：${hull.name}。`);
+  toast(`舰体建造完成：${hull.name}`);
+  flashWallet();
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function switchShip(shipId) {
+  const hull = SHIP_HULLS[shipId];
+  if (!hull || !state.docked) return;
+  if (shipId === state.activeShip) return toast(`${hull.name}正在使用`);
+  const location = state.ownedShips?.[shipId];
+  if (location !== state.currentSystem) {
+    const station = location && SYSTEMS[location] ? localizedSystem(location).station : "其他空间站";
+    return toast(`该舰停放在 ${station}`);
+  }
+  const targetLoadout = state.shipLoadouts?.[shipId] || {};
+  const targetStats = calculateShipStats(
+    { ...defaultState().fittedPlugins, ...(targetLoadout.fittedPlugins || {}) },
+    targetLoadout.activeWeapon || "pulse",
+    shipId,
+    { ...defaultState().upgrades, ...(targetLoadout.upgrades || {}) }
+  );
+  if (cargoUsed() > targetStats.cargo) return toast(`目标舰货舱仅 ${targetStats.cargo}，请先把多余货物存入本站仓库`);
+  const before = shipStats();
+  const shieldRatio = clamp(state.shield / Math.max(1, before.maxShield), 0, 1);
+  const hullRatio = clamp(state.hull / Math.max(1, before.maxHull), 0, 1);
+  saveActiveShipLoadout();
+  state.ownedShips[state.activeShip] = state.currentSystem;
+  state.activeShip = shipId;
+  state.ownedShips[shipId] = "active";
+  selectedHullPreview = shipId;
+  loadShipLoadout(shipId);
+  const after = shipStats();
+  state.shield = Math.max(1, after.maxShield * shieldRatio);
+  state.hull = Math.max(1, after.maxHull * hullRatio);
+  state.maxFuel = hull.stats.fuel;
+  state.fuel = Math.min(state.fuel, state.maxFuel);
+  state.capacitor = Math.min(state.capacitor, after.maxCapacitor);
+  player.radius = hull.stats.radius;
+  toast(`已切换至 ${hull.name}`);
+  renderStation();
+  updateHud();
+  saveGame();
+}
+
+function toggleWeapon() {
+  const fittedId = state.fittedPlugins?.weapon;
+  if (!fittedId || !PLUGINS[fittedId]) return toast(settings.language === "en" ? "No alternate weapon fitted" : "尚未安装可切换武器");
+  state.activeWeapon = state.activeWeapon === "fitted" ? "pulse" : "fitted";
+  player.fireCooldown = Math.max(player.fireCooldown, .18);
+  const stats = shipStats();
+  toast(`${settings.language === "en" ? "Weapon" : "武器切换"}：${stats.weaponLabel}`);
+  updateHud();
+  saveGame();
+}
+
+const FIRE_MODES = {
+  balanced: { name: "均衡", en: "Balanced" },
+  precision: { name: "精准", en: "Precision" },
+  rapid: { name: "连射", en: "Rapid" }
+};
+
+function cycleFireMode() {
+  const modes = Object.keys(FIRE_MODES);
+  const index = Math.max(0, modes.indexOf(state.fireMode));
+  state.fireMode = modes[(index + 1) % modes.length];
+  player.fireCooldown = Math.max(player.fireCooldown, .16);
+  const mode = FIRE_MODES[state.fireMode];
+  toast(`${settings.language === "en" ? "Fire Mode" : "射击模式"}：${settings.language === "en" ? mode.en : mode.name}`);
+  updateHud();
+  saveGame();
 }
 
 function pluginInputText(inputs) {
@@ -789,18 +992,22 @@ function canCraftPlugin(pluginId) {
   return !!plugin && Object.entries(plugin.inputs).every(([key, amount]) => localItemAmount(key) >= amount);
 }
 
-function shipStats() {
-  const u = state.upgrades;
+function calculateShipStats(fitting = state.fittedPlugins, weaponMode = state.activeWeapon, hullId = state.activeShip, upgrades = state.upgrades) {
+  const u = upgrades;
+  const base = (SHIP_HULLS[hullId] || SHIP_HULLS.pioneer).stats;
   const stats = {
-    maxShield: 100 + u.shield * 35,
-    maxHull: 100 + u.hull * 45,
-    damage: 12 * (1 + u.weapon * .25),
+    maxShield: base.maxShield + u.shield * 35,
+    maxHull: base.maxHull + u.hull * 45,
+    damage: base.damage * (1 + u.weapon * .25),
     fireRate: Math.max(.12, .27 - u.weapon * .018),
-    cargo: 30 + u.cargo * 15,
-    speed: 240 * (1 + u.engine * .12),
-    miningRate: 1 + u.mining * .35,
-    shieldRegen: 5 + u.shield * 1.5,
-    boostRecovery: 18 + u.engine * 3,
+    cargo: base.cargo + u.cargo * 15,
+    speed: base.speed * (1 + u.engine * .12),
+    miningRate: base.miningRate + u.mining * .35,
+    shieldRegen: base.shieldRegen + u.shield * 1.5,
+    boostRecovery: base.boostRecovery + u.engine * 3,
+    maxCapacitor: base.maxCapacitor,
+    capacitorRegen: 16,
+    weaponHeatCooling: 22,
     projectileSpeed: 720,
     bulletLife: 1.3,
     projectileRadius: 3,
@@ -810,12 +1017,15 @@ function shipStats() {
     damageType: "plasma",
     weaponLabel: settings.language === "en" ? "Pulse Cannon" : "脉冲炮",
     heatPerShot: .45,
+    weaponHeatPerShot: 7,
+    capacitorCost: 4,
     splashRadius: 0,
     ammoItem: null,
     ammoCost: 0,
     rareBonus: 0
   };
-  fittedPluginList().forEach(plugin => {
+  Object.values(fitting || {}).map(id => PLUGINS[id]).filter(Boolean).forEach(plugin => {
+    if (plugin.slot === "weapon" && weaponMode !== "fitted") return;
     const s = plugin.stats || {};
     if (s.damageMult) stats.damage *= s.damageMult;
     if (s.fireRateMult) stats.fireRate *= s.fireRateMult;
@@ -839,12 +1049,35 @@ function shipStats() {
     if (s.weaponLabel) stats.weaponLabel = settings.language === "en" ? (plugin.en || s.weaponLabel) : s.weaponLabel;
     if (s.splashRadius) stats.splashRadius = s.splashRadius;
     if (s.heat) stats.heatPerShot = s.heat;
+    if (s.weaponHeat) stats.weaponHeatPerShot = s.weaponHeat;
+    if (s.capacitorCost != null) stats.capacitorCost = s.capacitorCost;
     if (s.ammoItem) stats.ammoItem = s.ammoItem;
     if (s.ammoCost) stats.ammoCost = s.ammoCost;
   });
   stats.fireRate = Math.max(.08, stats.fireRate);
   stats.spread = Math.max(.001, stats.spread);
+  if (state.fireMode === "precision") {
+    stats.damage *= 1.18;
+    stats.fireRate *= 1.35;
+    stats.spread *= .5;
+    stats.projectileSpeed *= 1.08;
+    stats.capacitorCost *= 1.2;
+    stats.weaponHeatPerShot *= 1.1;
+  } else if (state.fireMode === "rapid") {
+    stats.damage *= .82;
+    stats.fireRate *= .62;
+    stats.spread *= 1.55;
+    stats.capacitorCost *= .82;
+    stats.weaponHeatPerShot *= 1.25;
+  }
+  stats.fireRate = Math.max(.065, stats.fireRate);
+  stats.spread = Math.max(.001, stats.spread);
+  stats.capacitorCost = Math.max(1, Math.round(stats.capacitorCost * 10) / 10);
   return stats;
+}
+
+function shipStats() {
+  return calculateShipStats();
 }
 
 function cargoUsed() {
@@ -1011,6 +1244,7 @@ function craftItem(recipeId) {
   Object.entries(recipe.inputs).forEach(([key, amount]) => removeLocalItems(key, amount));
   const outputAmount = craftedOutputAmount(recipe);
   addToStationStorage(recipe.output.item, outputAmount);
+  state.stats.crafted = (state.stats.crafted || 0) + 1;
   addFeed(`在 <b>${localizedSystem(state.currentSystem).station}</b> 制作 ${localizedGood(recipe.output.item).name} × ${outputAmount}。`);
   audioEngine.play("trade");
   renderStation();
@@ -1026,6 +1260,7 @@ function craftPlugin(pluginId) {
   Object.entries(plugin.inputs).forEach(([key, amount]) => removeLocalItems(key, amount));
   const store = pluginStore();
   store[pluginId] = (store[pluginId] || 0) + 1;
+  state.stats.pluginsCrafted = (state.stats.pluginsCrafted || 0) + 1;
   addFeed(`在 <b>${localizedSystem(state.currentSystem).station}</b> 制造插件：${localizedPlugin(pluginId).name}。`);
   audioEngine.play("trade");
   renderStation();
@@ -1045,6 +1280,7 @@ function installPlugin(pluginId) {
   if (store[pluginId] <= 0) delete store[pluginId];
   if (previous) store[previous] = (store[previous] || 0) + 1;
   state.fittedPlugins[plugin.slot] = pluginId;
+  if (plugin.slot === "weapon") state.activeWeapon = "fitted";
   const stats = shipStats();
   state.shield = Math.min(stats.maxShield, state.shield + (plugin.stats.shieldBonus || 0));
   state.hull = Math.min(stats.maxHull, state.hull + (plugin.stats.hullBonus || 0));
@@ -1062,6 +1298,7 @@ function uninstallPlugin(slot) {
   const store = pluginStore();
   store[pluginId] = (store[pluginId] || 0) + 1;
   state.fittedPlugins[slot] = null;
+  if (slot === "weapon") state.activeWeapon = "pulse";
   const stats = shipStats();
   state.shield = Math.min(state.shield, stats.maxShield);
   state.hull = Math.min(state.hull, stats.maxHull);
@@ -1633,7 +1870,7 @@ function updateOutpost(dt) {
     world.enemyBullets.push({
       x: outpost.x + Math.cos(angle) * outpost.r, y: outpost.y + Math.sin(angle) * outpost.r,
       vx: Math.cos(angle) * 300, vy: Math.sin(angle) * 300,
-      life: 2.8, damage: 18, r: 5, source: "outpost"
+      life: 2.8, damage: 18, damageType: "thermal", color: "#a980ff", r: 5, source: "outpost"
     });
     outpost.fireCooldown = 1.65;
   }
@@ -1653,6 +1890,12 @@ function update(dt) {
   interactionLock = false;
 
   const stats = shipStats();
+  state.capacitor = Math.min(stats.maxCapacitor, state.capacitor + stats.capacitorRegen * dt);
+  player.weaponHeat = Math.max(0, player.weaponHeat - stats.weaponHeatCooling * dt);
+  if (player.overheatLocked && player.weaponHeat <= 42) {
+    player.overheatLocked = false;
+    toast(settings.language === "en" ? "Weapon cooling complete" : "武器冷却完成");
+  }
   let dx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
   let dy = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
   const length = Math.hypot(dx, dy) || 1;
@@ -1696,6 +1939,14 @@ function update(dt) {
 
 function shootPlayer() {
   const stats = shipStats();
+  if (player.overheatLocked) {
+    player.fireCooldown = .18;
+    return;
+  }
+  if (state.capacitor < stats.capacitorCost) {
+    player.fireCooldown = .24;
+    return toast(settings.language === "en" ? "Insufficient capacitor" : "武器电容不足");
+  }
   if (stats.ammoItem && stats.ammoCost > 0) {
     const consumed = removeCargo(stats.ammoItem, stats.ammoCost);
     if (consumed < stats.ammoCost) {
@@ -1712,6 +1963,13 @@ function shootPlayer() {
     life: stats.bulletLife, damage: stats.damage, r: stats.projectileRadius,
     kind: stats.weaponKind, damageType: stats.damageType, splashRadius: stats.splashRadius, color: stats.weaponColor
   });
+  state.capacitor = Math.max(0, state.capacitor - stats.capacitorCost);
+  player.weaponHeat = clamp(player.weaponHeat + stats.weaponHeatPerShot, 0, 100);
+  if (player.weaponHeat >= 100) {
+    player.overheatLocked = true;
+    audioEngine.play("alert");
+    toast(settings.language === "en" ? "Weapon overheated · cooling locked" : "武器过热 · 正在强制冷却");
+  }
   player.fireCooldown = stats.fireRate;
   pve.heat = clamp(pve.heat + stats.heatPerShot, 0, 100);
   audioEngine.play("shoot");
@@ -1869,6 +2127,7 @@ function updateEnemies(dt) {
         x: enemy.x + Math.cos(angle) * enemy.r, y: enemy.y + Math.sin(angle) * enemy.r,
         vx: Math.cos(angle) * spec.bulletSpeed, vy: Math.sin(angle) * spec.bulletSpeed,
         life: Math.max(2.1, enemy.weaponRange / spec.bulletSpeed + .4), damage: spec.damage,
+        damageType: spec.damageType || "plasma", color: spec.bulletColor || spec.color,
         r: enemy.type === "gunship" ? 5 : enemy.type === "missile" ? 4 : 3,
         source: enemy.type
       });
@@ -1900,10 +2159,14 @@ function destroyEnemy(enemy) {
 function damagePlayer(amount, source = null) {
   if (player.invulnerable > 0) return;
   player.shieldDelay = 4;
-  if (state.shield > 0) {
-    const absorbed = Math.min(state.shield, amount);
-    state.shield -= absorbed;
-    amount -= absorbed;
+  const damageType = source?.damageType || "plasma";
+  let rawRemaining = amount;
+  if (state.shield > 0 && rawRemaining > 0) {
+    const multiplier = damageLayerMultiplier(damageType, "shield");
+    const before = state.shield;
+    const absorbed = Math.min(before, rawRemaining * multiplier);
+    state.shield = Math.max(0, before - absorbed);
+    rawRemaining = Math.max(0, rawRemaining - before / multiplier);
     shieldImpact = 1;
     shieldHitAngle = source ? Math.atan2(source.y - player.y, source.x - player.x) : player.angle + Math.PI;
     $("#shieldOrb").classList.remove("hit");
@@ -1911,8 +2174,9 @@ function damagePlayer(amount, source = null) {
     createParticles(player.x, player.y, "#39ddff", 7, 95);
     audioEngine.play("shield");
   }
-  if (amount > 0) {
-    state.hull -= amount;
+  if (rawRemaining > 0) {
+    const hullDamage = rawRemaining * damageLayerMultiplier(damageType, "hull");
+    state.hull -= hullDamage;
     createParticles(player.x, player.y, "#ff9d66", 9, 115);
     audioEngine.play("hit");
   }
@@ -1971,8 +2235,11 @@ function updateInteraction(dt) {
   });
 
   if (stationDistance < 150) {
-    prompt.textContent = "按 E 停靠空间站";
-    prompt.classList.remove("hidden");
+    setContextAction(
+      "dock",
+      settings.language === "en" ? "Dock at station" : "停靠空间站",
+      settings.language === "en" ? `${Math.round(stationDistance)}m · Market, storage and fitting` : `${Math.round(stationDistance)}m · 市场、仓库与改装`
+    );
     return;
   }
 
@@ -1984,32 +2251,65 @@ function updateInteraction(dt) {
       if (targetDistance > 260) toast("采矿束超出有效距离");
     } else {
       mineAsteroid(activeTarget, dt);
-      prompt.textContent = "按 E 关闭采矿束";
-      prompt.classList.remove("hidden");
+      const progress = Math.round(clamp(1 - activeTarget.hp / activeTarget.maxHp, 0, 1) * 100);
+      setContextAction(
+        "mining",
+        settings.language === "en" ? "Stop mining beam" : "关闭采矿束",
+        settings.language === "en" ? `${Math.round(targetDistance)}m · Extraction ${progress}%` : `${Math.round(targetDistance)}m · 开采进度 ${progress}%`
+      );
       return;
     }
   } else if (mining.active) {
     stopMining(false);
   }
 
-  if (nearestAsteroid && nearestDistance < 225) {
-    prompt.textContent = `按 E 锁定 ${GOODS[nearestAsteroid.resource].name}`;
-    prompt.classList.remove("hidden");
-    return;
-  }
   const nearbyLoot = world.loot.find(loot => distance(player, loot) < 135);
   if (nearbyLoot) {
-    prompt.textContent = `按 E 回收 ${GOODS[nearbyLoot.item].name}`;
-    prompt.classList.remove("hidden");
+    const lootDistance = distance(player, nearbyLoot);
+    setContextAction(
+      "loot",
+      settings.language === "en" ? `Recover ${localizedGood(nearbyLoot.item).name}` : `回收 ${localizedGood(nearbyLoot.item).name}`,
+      settings.language === "en" ? `${Math.round(lootDistance)}m · ${nearbyLoot.amount} units` : `${Math.round(lootDistance)}m · 数量 ${nearbyLoot.amount}`
+    );
     return;
   }
-  prompt.classList.add("hidden");
+  if (nearestAsteroid && nearestDistance < 225) {
+    setContextAction(
+      "mine",
+      settings.language === "en" ? `Lock ${localizedGood(nearestAsteroid.resource).name}` : `锁定 ${localizedGood(nearestAsteroid.resource).name}`,
+      settings.language === "en" ? `${Math.round(nearestDistance)}m · Start mining beam` : `${Math.round(nearestDistance)}m · 启动采矿束`
+    );
+    return;
+  }
+  setContextAction();
+}
+
+function setContextAction(type = "", title = "", detail = "") {
+  const prompt = $("#interactionPrompt");
+  const button = $("#contextActionBtn");
+  const active = !!type;
+  prompt.classList.toggle("hidden", !active);
+  prompt.dataset.action = type;
+  button.disabled = !active;
+  button.classList.toggle("ready", active);
+  button.dataset.action = type;
+  button.title = active ? `${title} · ${detail}` : (settings.language === "en" ? "No interactive target in range" : "范围内没有可交互目标");
+  button.setAttribute("aria-label", active ? title : (settings.language === "en" ? "Context scan" : "扫描交互"));
+  $("#contextActionName").textContent = active ? title : (settings.language === "en" ? "Context scan" : "扫描交互");
+  $("#contextActionHint").textContent = active ? detail : (settings.language === "en" ? "Approach an interactive target" : "靠近可交互目标");
+  if (!active) return;
+  $("#interactionAction").textContent = title;
+  $("#interactionDetail").textContent = detail;
 }
 
 function handleInteractionAction() {
   if (state.docked || paused) return;
   if (distance(player, world.station) < 150) {
     dock();
+    return;
+  }
+  if (mining.active) {
+    stopMining();
     return;
   }
   const nearbyLoot = world.loot.find(loot => distance(player, loot) < 135);
@@ -2020,10 +2320,6 @@ function handleInteractionAction() {
       createParticles(nearbyLoot.x, nearbyLoot.y, GOODS[nearbyLoot.item].color, 8, 70);
       addFeed(`回收 ${GOODS[nearbyLoot.item].name} × ${accepted}。`);
     } else toast("货舱已满");
-    return;
-  }
-  if (mining.active) {
-    stopMining();
     return;
   }
   let target = null;
@@ -2083,6 +2379,9 @@ function dock() {
   state.story = { ...(state.story || {}), dockedOnce: true };
   paused = true;
   player.vx = player.vy = 0;
+  player.weaponHeat = 0;
+  player.overheatLocked = false;
+  state.capacitor = shipStats().maxCapacitor;
   pve.heat = Math.max(0, pve.heat - 20);
   autoRefuel();
   checkDeliveryMission();
@@ -2236,6 +2535,7 @@ function placeLimitSellOrder(itemKey, requested, limitPrice) {
     price,
     createdAt: state.playSeconds
   });
+  state.stats.ordersCreated = (state.stats.ordersCreated || 0) + 1;
   addFeed(`挂出卖单 <b>${localizedGood(itemKey).name}</b> × ${removed}，单价 ${formatNumber(price)} ISK。`);
   toast(`已挂单：${localizedGood(itemKey).name} × ${removed} @ ${formatNumber(price)} ISK`);
   audioEngine.play("trade");
@@ -2288,6 +2588,9 @@ function repairShip() {
   state.credits -= cost;
   state.hull = stats.maxHull;
   state.shield = stats.maxShield;
+  state.capacitor = stats.maxCapacitor;
+  player.weaponHeat = 0;
+  player.overheatLocked = false;
   addFeed(`完成舰船维修，支付 ${formatNumber(cost)} ISK。`);
   renderStation();
   updateHud();
@@ -2372,6 +2675,67 @@ function completeMission() {
   saveGame();
 }
 
+function careerMetricValue(metric) {
+  if (metric === "visited") return new Set(state.visitedSystems || ["aurora"]).size;
+  if (metric === "remoteQuotes") return state.story?.viewedRemoteMarket ? 1 : 0;
+  if (metric === "reputation") return state.reputation || 0;
+  return Number(state.stats?.[metric]) || 0;
+}
+
+function careerPathProgress(pathId) {
+  const path = CAREER_PATHS[pathId] || CAREER_PATHS.explorer;
+  const goals = path.goals.map(goal => ({ ...goal, current: careerMetricValue(goal.metric) }));
+  const pct = goals.reduce((sum, goal) => sum + clamp(goal.current / goal.target, 0, 1), 0) / goals.length * 100;
+  return { path, goals, pct, completed: goals.every(goal => goal.current >= goal.target) };
+}
+
+function trackedCareerId() {
+  const tracked = state.career?.tracked;
+  return CAREER_PATHS[tracked] ? tracked : "explorer";
+}
+
+function selectCareerPath(pathId) {
+  if (!CAREER_PATHS[pathId]) return;
+  state.career = { ...(state.career || {}), tracked: pathId };
+  renderCareerJournal();
+  updateTutorial();
+  toast(`${settings.language === "en" ? "Tracking" : "正在追踪"}：${settings.language === "en" ? CAREER_PATHS[pathId].en : CAREER_PATHS[pathId].name}`);
+  saveGame();
+}
+
+function renderCareerJournal() {
+  const panel = $("#careerJournal");
+  if (!panel) return;
+  const trackedId = trackedCareerId();
+  const focus = careerPathProgress(trackedId);
+  const isEn = settings.language === "en";
+  panel.innerHTML = `
+    <header class="career-head">
+      <div><span>${isEn ? "CAPSULEER PATHS" : "飞行员职业日志"}</span><strong>${isEn ? "Choose a direction, keep every achievement" : "选择方向，但不丢失任何进度"}</strong></div>
+      <p>${isEn ? "All paths progress in parallel. Rewards are identity badges and never manipulate market prices." : "所有路线同时累计。完成后获得身份徽章，不发放可交易物品，也不干预市场价格。"}</p>
+    </header>
+    <div class="career-paths">
+      ${Object.entries(CAREER_PATHS).map(([id, path]) => {
+        const progress = careerPathProgress(id);
+        return `<button class="career-path ${id === trackedId ? "active" : ""} ${progress.completed ? "completed" : ""}" data-career-path="${id}" style="--career-color:${path.color}">
+          <i>${path.icon}</i><span><strong>${isEn ? path.en : path.name}</strong><small>${Math.round(progress.pct)}%</small></span>
+          <b style="--progress:${progress.pct}%"></b>
+        </button>`;
+      }).join("")}
+    </div>
+    <section class="career-focus" style="--career-color:${focus.path.color}">
+      <div class="career-summary"><i>${focus.path.icon}</i><span><strong>${isEn ? focus.path.en : focus.path.name}</strong><small>${isEn ? focus.path.descriptionEn : focus.path.description}</small></span><b>${focus.completed ? (isEn ? "BADGE EARNED" : "徽章已获得") : (isEn ? "TRACKING" : "正在追踪")}</b></div>
+      <div class="career-goals">
+        ${focus.goals.map(goal => {
+          const done = goal.current >= goal.target;
+          const value = `${formatNumber(Math.min(goal.current, goal.target))}/${formatNumber(goal.target)}${goal.suffix || ""}`;
+          return `<div class="${done ? "done" : ""}"><span>${isEn ? goal.en : goal.label}</span><b>${done ? "✓" : value}</b><i><em style="width:${clamp(goal.current / goal.target * 100, 0, 100)}%"></em></i></div>`;
+        }).join("")}
+      </div>
+    </section>`;
+  $$("[data-career-path]").forEach(button => button.addEventListener("click", () => selectCareerPath(button.dataset.careerPath)));
+}
+
 function currentTutorialStep() {
   if (!state.tutorial || state.tutorial.completed || !state.tutorial.active) return null;
   return TUTORIAL_STEPS[state.tutorial.step] || null;
@@ -2440,7 +2804,20 @@ function renderTutorial(step, progress) {
   if (!card) return;
   const done = !step;
   card.classList.toggle("completed", done);
-  if (done) return;
+  if (done) {
+    const focus = careerPathProgress(trackedCareerId());
+    const next = focus.goals.find(goal => goal.current < goal.target) || focus.goals[focus.goals.length - 1];
+    const isEn = settings.language === "en";
+    card.classList.remove("completed");
+    $("#tutorialTitle").textContent = isEn ? "Career Path" : "职业航迹";
+    $("#tutorialContent").innerHTML = `
+      <div class="tutorial-step-label"><span>${isEn ? focus.path.en : focus.path.name}</span><b>${Math.round(focus.pct)}%</b></div>
+      <div class="tutorial-objective">${focus.completed ? (isEn ? "Path badge earned" : "路线徽章已获得") : (isEn ? next.en : next.label)}</div>
+      <p class="tutorial-hint">${isEn ? "Every activity counts even when another path is tracked." : "未追踪的路线也会同步累计；停靠后可在任务大厅切换。"}</p>
+      <div class="tutorial-progress"><i style="width:${focus.pct}%"></i></div>
+      <div class="tutorial-reward"><span>${formatNumber(Math.min(next.current, next.target))} / ${formatNumber(next.target)}</span><b>${isEn ? "Identity badge" : "身份徽章"}</b></div>`;
+    return;
+  }
   const index = state.tutorial.step + 1;
   const pct = clamp(progress / step.target * 100, 0, 100);
   $("#tutorialTitle").textContent = settings.language === "en" ? "Pilot License" : "飞行员执照";
@@ -2571,6 +2948,7 @@ function renderHub() {
   const system = SYSTEMS[state.currentSystem];
   const label = localizedSystem(state.currentSystem);
   const stats = shipStats();
+  const activeHull = activeShipHull();
   const repairCost = Math.ceil((stats.maxHull - state.hull) * 8 + (stats.maxShield - state.shield) * 1.5);
   const cargoUsedNow = cargoUsed();
   const localPilots = aiPilots.filter(pilot => pilot.system === state.currentSystem).length;
@@ -2585,14 +2963,16 @@ function renderHub() {
   const hullPct = Math.round((state.hull / Math.max(1, stats.maxHull)) * 100);
   const rankLabel = settings.language === "en"
     ? `Frontier License · MK ${String(upgradeLevel + 1).padStart(2, "0")}`
-    : `拓荒者执照 · MK ${String(upgradeLevel + 1).padStart(2, "0")}`;
+    : `边境飞行执照 · MK ${String(upgradeLevel + 1).padStart(2, "0")}`;
 
   if ($("#pilotCallsign")) $("#pilotCallsign").textContent = settings.language === "en" ? "Frontier Pilot" : "边境飞行员";
   if ($("#pilotRank")) $("#pilotRank").textContent = rankLabel;
   if ($("#pilotWallet")) $("#pilotWallet").textContent = `${formatNumber(state.credits)} ISK`;
   if ($("#pilotCargo")) $("#pilotCargo").textContent = `${cargoUsedNow} / ${stats.cargo}`;
-  if ($("#hubShipClass")) $("#hubShipClass").textContent = settings.language === "en" ? `PIONEER CLASS · MK ${upgradeLevel + 1}` : `拓荒者级 · MK ${upgradeLevel + 1}`;
+  if ($("#hubShipClass")) $("#hubShipClass").textContent = `${settings.language === "en" ? activeHull.en.toUpperCase() : activeHull.name} · MK ${upgradeLevel + 1}`;
   if ($("#hubShipIntegrity")) $("#hubShipIntegrity").textContent = settings.language === "en" ? `Shield ${shieldPct}% · Hull ${hullPct}%` : `护盾 ${shieldPct}% · 装甲 ${hullPct}%`;
+  const dockedShipModel = $(".dock-showcase .docked-ship");
+  if (dockedShipModel) dockedShipModel.dataset.hull = state.activeShip;
   const hubUndock = $("#hubUndockBtn");
   if (hubUndock) {
     hubUndock.querySelector("span").textContent = settings.language === "en" ? "Launch" : "离站";
@@ -3234,9 +3614,114 @@ function drawMarketChart(itemKey) {
   }
 }
 
+function fittingPreviewMetrics(pluginId) {
+  const plugin = PLUGINS[pluginId];
+  if (!plugin) return [];
+  const before = shipStats();
+  const fitting = { ...(state.fittedPlugins || defaultState().fittedPlugins), [plugin.slot]: pluginId };
+  const after = calculateShipStats(fitting, plugin.slot === "weapon" ? "fitted" : state.activeWeapon);
+  const metric = (label, current, next, formatter = value => `${Math.round(value)}`, higherIsBetter = true) => {
+    const delta = next - current;
+    const threshold = Math.max(.0001, Math.abs(current) * .001);
+    const direction = Math.abs(delta) <= threshold ? "neutral" : (delta * (higherIsBetter ? 1 : -1) > 0 ? "better" : "tradeoff");
+    const deltaText = Math.abs(delta) <= threshold ? "—" : `${delta > 0 ? "+" : "−"}${formatter(Math.abs(delta))}`;
+    return { label, value: formatter(next), deltaText, direction };
+  };
+  const metricMap = {
+    weapon: [
+      metric("单发", before.damage, after.damage),
+      metric("射速", 1 / before.fireRate, 1 / after.fireRate, value => value.toFixed(1)),
+      metric("热量", before.weaponHeatPerShot, after.weaponHeatPerShot, value => value.toFixed(1), false)
+    ],
+    defense: [
+      metric("护盾", before.maxShield, after.maxShield),
+      metric("装甲", before.maxHull, after.maxHull),
+      metric("速度", before.speed, after.speed)
+    ],
+    engineering: [
+      metric("速度", before.speed, after.speed),
+      metric("推进恢复", before.boostRecovery, after.boostRecovery, value => value.toFixed(1))
+    ],
+    industrial: [
+      metric("货舱", before.cargo, after.cargo),
+      metric("采矿", before.miningRate, after.miningRate, value => value.toFixed(2)),
+      metric("速度", before.speed, after.speed)
+    ],
+    electronic: [
+      metric("弹道距离", before.projectileSpeed * before.bulletLife, after.projectileSpeed * after.bulletLife),
+      metric("散布", before.spread * 1000, after.spread * 1000, value => value.toFixed(1), false)
+    ]
+  };
+  return metricMap[plugin.slot] || [];
+}
+
+function renderFittingPreview(pluginId) {
+  return `<div class="fitting-preview" aria-label="${settings.language === "en" ? "Simulated fitting changes" : "模拟安装变化"}">
+    ${fittingPreviewMetrics(pluginId).map(item => `
+      <span class="${item.direction}"><small>${item.label}</small><b>${item.value}</b><em>${item.deltaText}</em></span>
+    `).join("")}
+  </div>`;
+}
+
+function hullMaterialText(hull) {
+  const entries = Object.entries(hull.inputs);
+  if (!entries.length) return settings.language === "en" ? "Starter hull" : "初始舰体";
+  return entries.map(([key, amount]) => {
+    const current = localItemAmount(key);
+    return `<span class="${current >= amount ? "" : "missing"}">${localizedGood(key).name} ${current}/${amount}</span>`;
+  }).join(" · ");
+}
+
+function shipLocationText(shipId) {
+  if (shipId === state.activeShip) return settings.language === "en" ? "ACTIVE" : "当前舰船";
+  const location = state.ownedShips?.[shipId];
+  if (!location) return settings.language === "en" ? "BLUEPRINT" : "蓝图";
+  return location === state.currentSystem
+    ? (settings.language === "en" ? "LOCAL HANGAR" : "本站机库")
+    : localizedSystem(location).station;
+}
+
+function renderShipHullRoster() {
+  const previewId = SHIP_HULLS[selectedHullPreview] ? selectedHullPreview : state.activeShip;
+  const preview = SHIP_HULLS[previewId];
+  $("#shipyardShipTitle").textContent = `${settings.language === "en" ? preview.en : preview.name} · ${settings.language === "en" ? preview.roleEn : preview.role}`;
+  const previewOnly = previewId !== state.activeShip;
+  $("#shipyardShipDescription").textContent = `${settings.language === "en" ? preview.descriptionEn : preview.description}${previewOnly ? (settings.language === "en" ? " Preview only; the fitting panel still belongs to your active ship." : " 当前仅预览舰体；右侧插件区仍属于正在使用的舰船。") : ""}`;
+  $("#shipyardHullModel").dataset.hull = previewId;
+  $("#shipHullRoster").innerHTML = Object.entries(SHIP_HULLS).map(([id, hull]) => {
+    const active = id === state.activeShip;
+    const owned = !!state.ownedShips?.[id];
+    const local = state.ownedShips?.[id] === state.currentSystem;
+    const canBuild = canCommissionShip(id);
+    const action = active
+      ? `<button disabled>${settings.language === "en" ? "Active" : "使用中"}</button>`
+      : owned
+        ? `<button data-switch-ship="${id}" ${local ? "" : "disabled"}>${local ? (settings.language === "en" ? "Activate" : "切换舰船") : (settings.language === "en" ? "Remote" : "异地停放")}</button>`
+        : `<button data-commission-ship="${id}" ${canBuild ? "" : "disabled"}>${settings.language === "en" ? "Commission" : "建造委托"} · ${formatNumber(hull.cost)}</button>`;
+    return `
+      <article class="ship-hull-card ${active ? "active" : ""} ${previewId === id ? "previewing" : ""}" style="--hull-color:${hull.color}">
+        <button class="ship-hull-select" data-preview-hull="${id}">
+          <i>${hull.visual.model === "courier" ? "➤" : hull.visual.model === "prospector" ? "◆" : hull.visual.model === "vanguard" ? "⬢" : "△"}</i>
+          <span><strong>${settings.language === "en" ? hull.en : hull.name}</strong><small>${settings.language === "en" ? hull.roleEn : hull.role}</small></span>
+          <b>${shipLocationText(id)}</b>
+        </button>
+        <div class="hull-stat-strip"><span>盾 ${hull.stats.maxShield}</span><span>甲 ${hull.stats.maxHull}</span><span>舱 ${hull.stats.cargo}</span><span>速 ${hull.stats.speed}</span></div>
+        <div class="hull-materials">${hullMaterialText(hull)}</div>
+        ${action}
+      </article>`;
+  }).join("");
+  $$("[data-preview-hull]").forEach(button => button.addEventListener("click", () => {
+    selectedHullPreview = button.dataset.previewHull;
+    renderShipHullRoster();
+  }));
+  $$("[data-commission-ship]").forEach(button => button.addEventListener("click", () => commissionShip(button.dataset.commissionShip)));
+  $$("[data-switch-ship]").forEach(button => button.addEventListener("click", () => switchShip(button.dataset.switchShip)));
+}
+
 function renderUpgrades() {
   const store = pluginStore();
   const fitted = state.fittedPlugins || defaultState().fittedPlugins;
+  renderShipHullRoster();
   $("#fittingPanel").innerHTML = `
     <div class="terminal-section-head"><strong>${settings.language === "en" ? "Ship Plugin Slots" : "舰船插件槽"}</strong><span>${settings.language === "en" ? "Station-local inventory" : "插件库存属于当前空间站"}</span></div>
     <div class="slot-grid">
@@ -3265,6 +3750,7 @@ function renderUpgrades() {
           <article class="plugin-card" style="--plugin-color:${raw.color}">
             <header><i>${raw.icon}</i><span><small>${plugin.slotName} · ${raw.rarity}</small><strong>${plugin.name}</strong></span><b>${count}</b></header>
             <p>${settings.language === "en" ? raw.description : raw.description}</p>
+            ${renderFittingPreview(id)}
             <div class="craft-recipe">${pluginInputText(raw.inputs)}</div>
             <footer>
               <button class="procurement-button" data-procure-plugin="${id}" ${quote.canPurchase ? "" : "disabled"} title="${procurementButtonLabel(quote)}">⌑ ${procurementButtonLabel(quote)}</button>
@@ -3467,6 +3953,7 @@ function renderStoryPanel() {
 }
 
 function renderContracts() {
+  renderCareerJournal();
   renderStoryPanel();
   const available = CONTRACT_LIBRARY.filter(contract => contract.id !== state.mission?.id).slice(0, 5);
   $("#contractGrid").innerHTML = available.map(contract => `
@@ -3631,9 +4118,12 @@ function updateSystemHud() {
 
 function updateHud() {
   const stats = shipStats();
+  const hull = activeShipHull();
   state.shield = Math.min(state.shield, stats.maxShield);
   state.hull = Math.min(state.hull, stats.maxHull);
   $("#credits").textContent = formatNumber(state.credits);
+  $("#shipName").textContent = settings.language === "en" ? hull.en : hull.name;
+  $("#shipVitals").dataset.hull = state.activeShip;
   $("#shieldText").textContent = `${Math.ceil(state.shield)} / ${stats.maxShield}`;
   $("#hullText").textContent = `${Math.ceil(state.hull)} / ${stats.maxHull}`;
   $("#fuelText").textContent = `${state.fuel} / ${state.maxFuel}`;
@@ -3644,6 +4134,12 @@ function updateHud() {
   $("#shieldOrbValue").textContent = shieldPct;
   $("#hullOrbValue").textContent = hullPct;
   $("#cargoStat").textContent = `${cargoUsed()}/${stats.cargo}`;
+  const capacitorPct = clamp(state.capacitor / stats.maxCapacitor * 100, 0, 100);
+  const heatPct = clamp(player.weaponHeat, 0, 100);
+  $("#capacitorBar").style.width = `${capacitorPct}%`;
+  $("#capacitorText").textContent = Math.round(capacitorPct);
+  $("#weaponHeatBar").style.width = `${heatPct}%`;
+  $("#weaponHeatText").textContent = Math.round(heatPct);
   const vitalStatus = $("#shipVitalStatus");
   if (hullPct <= 30) {
     vitalStatus.className = "critical";
@@ -3656,9 +4152,35 @@ function updateHud() {
     vitalStatus.innerHTML = `<i></i>${settings.language === "en" ? "Stable" : "稳定"}`;
   }
   $("#boostStatus").textContent = `${Math.round(player.boostEnergy)}%`;
-  const weaponLabel = $("#combatHud .ability:first-child span");
-  if (weaponLabel) weaponLabel.textContent = stats.weaponLabel;
-  $("#weaponCooldown").textContent = player.fireCooldown > 0 ? `${player.fireCooldown.toFixed(1)}s` : (UI_TEXT[settings.language] || UI_TEXT.zh).ready;
+  const weaponLabel = $("#activeWeaponName");
+  const weaponButton = $("#weaponSwitchBtn");
+  weaponButton?.classList.toggle("overheated", player.overheatLocked);
+  weaponButton?.classList.toggle("alternate", state.activeWeapon === "fitted" && !!activeWeaponPlugin());
+  const fireMode = FIRE_MODES[state.fireMode] || FIRE_MODES.balanced;
+  if (weaponLabel) weaponLabel.textContent = `${stats.weaponLabel} · ${settings.language === "en" ? fireMode.en : fireMode.name}`;
+  if (weaponButton) {
+    weaponButton.title = settings.language === "en" ? "Q: switch weapon · R: fire mode" : "Q：切换武器 · R：切换射击模式";
+    weaponButton.dataset.fireMode = state.fireMode;
+  }
+  const fireModeButton = $("#fireModeBtn");
+  if (fireModeButton) {
+    fireModeButton.dataset.fireMode = state.fireMode;
+    fireModeButton.title = settings.language === "en" ? "Cycle fire mode (R)" : "切换射击模式（R）";
+    fireModeButton.setAttribute("aria-label", `${settings.language === "en" ? "Fire mode" : "射击模式"}：${settings.language === "en" ? fireMode.en : fireMode.name}`);
+  }
+  $("#fireModeName").textContent = settings.language === "en" ? fireMode.en : fireMode.name;
+  $("#weaponCooldown").textContent = player.overheatLocked
+    ? (settings.language === "en" ? "OVERHEAT" : "过热锁定")
+    : player.fireCooldown > 0
+      ? `${player.fireCooldown.toFixed(1)}s`
+      : stats.ammoItem
+        ? `${localizedGood(stats.ammoItem).name} ${state.cargo[stats.ammoItem] || 0}`
+        : (UI_TEXT[settings.language] || UI_TEXT.zh).ready;
+  const combatFocused = !state.docked && (
+    pve.alert > 0 ||
+    world.enemies.some(enemy => enemy.state === "attack" || enemy.state === "locked" || enemy.state === "chase")
+  );
+  document.body.classList.toggle("combat-focus", combatFocused);
   updateSystemHud();
   updateAIPopulationHud();
   updateCargoHud();
@@ -3857,6 +4379,9 @@ function drawStation() {
 
 function drawPlayer() {
   const p = worldToScreen(player.x, player.y);
+  const hull = activeShipHull();
+  const visual = hull.visual;
+  const model = visual.model;
   const depthMode = settings.depthFx || "standard";
   const boosting = keys.shift && player.boostEnergy > 0;
   const strafe = (keys.a || keys.arrowleft ? -1 : 0) + (keys.d || keys.arrowright ? 1 : 0);
@@ -3869,7 +4394,7 @@ function drawPlayer() {
     ctx.rotate(player.angle + Math.PI / 2);
     ctx.fillStyle = `rgba(2,7,15,${.28 * glow})`;
     ctx.beginPath();
-    ctx.ellipse(0, 18, 29, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 18, player.radius * 1.7, player.radius * .6, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -3878,14 +4403,15 @@ function drawPlayer() {
   ctx.translate(p.x, p.y);
   ctx.rotate(player.angle + Math.PI / 2);
   if (bank) ctx.transform(1, bank, bank * .12, 1, 0, 0);
+  ctx.scale(visual.scale, visual.scale);
 
   const enginePulse = .82 + Math.sin(performance.now() * .018) * .18;
   const flameLength = boosting ? 43 + Math.random() * 12 : 16 + enginePulse * 7;
-  [-9, 9].forEach(offset => {
+  visual.engines.forEach(offset => {
     const flame = ctx.createLinearGradient(offset, 17, offset, 17 + flameLength);
     flame.addColorStop(0, `rgba(238,253,255,${.96 * glow})`);
-    flame.addColorStop(.35, `rgba(57,221,255,${.72 * glow})`);
-    flame.addColorStop(1, "rgba(57,221,255,0)");
+    flame.addColorStop(.35, `${hull.color}bb`);
+    flame.addColorStop(1, `${hull.color}00`);
     ctx.fillStyle = flame;
     ctx.beginPath();
     ctx.moveTo(offset - 4, 16);
@@ -3905,16 +4431,27 @@ function drawPlayer() {
     ctx.globalAlpha = 1;
   }
 
-  ctx.shadowColor = "#39ddff";
+  ctx.shadowColor = hull.color;
   ctx.shadowBlur = 16 * glow;
   const wingGradient = ctx.createLinearGradient(-34, -4, 34, 28);
-  wingGradient.addColorStop(0, "#4b6888");
+  wingGradient.addColorStop(0, hull.color);
   wingGradient.addColorStop(.45, "#21354f");
   wingGradient.addColorStop(1, "#080f1c");
   ctx.fillStyle = wingGradient;
   ctx.beginPath();
-  ctx.moveTo(-8, -5); ctx.lineTo(-35, 12); ctx.lineTo(-29, 30); ctx.lineTo(-4, 18); ctx.closePath();
-  ctx.moveTo(8, -5); ctx.lineTo(35, 12); ctx.lineTo(29, 30); ctx.lineTo(4, 18); ctx.closePath();
+  if (model === "courier") {
+    ctx.moveTo(-5, -10); ctx.lineTo(-28, 8); ctx.lineTo(-20, 31); ctx.lineTo(-3, 17); ctx.closePath();
+    ctx.moveTo(5, -10); ctx.lineTo(28, 8); ctx.lineTo(20, 31); ctx.lineTo(3, 17); ctx.closePath();
+  } else if (model === "prospector") {
+    ctx.moveTo(-9, -5); ctx.lineTo(-42, 1); ctx.lineTo(-39, 25); ctx.lineTo(-7, 23); ctx.closePath();
+    ctx.moveTo(9, -5); ctx.lineTo(42, 1); ctx.lineTo(39, 25); ctx.lineTo(7, 23); ctx.closePath();
+  } else if (model === "vanguard") {
+    ctx.moveTo(-7, -16); ctx.lineTo(-39, 1); ctx.lineTo(-34, 29); ctx.lineTo(-4, 20); ctx.closePath();
+    ctx.moveTo(7, -16); ctx.lineTo(39, 1); ctx.lineTo(34, 29); ctx.lineTo(4, 20); ctx.closePath();
+  } else {
+    ctx.moveTo(-8, -5); ctx.lineTo(-35, 12); ctx.lineTo(-29, 30); ctx.lineTo(-4, 18); ctx.closePath();
+    ctx.moveTo(8, -5); ctx.lineTo(35, 12); ctx.lineTo(29, 30); ctx.lineTo(4, 18); ctx.closePath();
+  }
   ctx.fill();
 
   ctx.shadowBlur = 10 * glow;
@@ -3922,29 +4459,33 @@ function drawPlayer() {
   podGradient.addColorStop(0, "#0b1322");
   podGradient.addColorStop(.48, "#365671");
   podGradient.addColorStop(1, "#09111f");
-  [-12, 12].forEach(offset => {
+  visual.engines.forEach(offset => {
     ctx.fillStyle = podGradient;
     ctx.beginPath();
-    ctx.roundRect(offset - 5, 5, 10, 22, 4);
+    ctx.roundRect(offset - 4, 5, 8, model === "vanguard" ? 24 : 22, 4);
     ctx.fill();
-    ctx.fillStyle = `rgba(105,230,255,${.55 * glow})`;
+    ctx.fillStyle = hull.color;
+    ctx.globalAlpha = .55 * glow;
     ctx.beginPath(); ctx.arc(offset, 25, 3.4, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
   });
 
   const hullGradient = ctx.createLinearGradient(-18, -31, 18, 30);
-  hullGradient.addColorStop(0, "#ecffff");
-  hullGradient.addColorStop(.2, "#88eaff");
+  hullGradient.addColorStop(0, hull.accent);
+  hullGradient.addColorStop(.2, hull.color);
   hullGradient.addColorStop(.52, "#2f5877");
   hullGradient.addColorStop(1, "#142238");
   ctx.fillStyle = hullGradient;
   ctx.beginPath();
-  ctx.moveTo(0, -33);
-  ctx.lineTo(15, -3);
-  ctx.lineTo(12, 23);
-  ctx.lineTo(4, 30);
-  ctx.lineTo(-4, 30);
-  ctx.lineTo(-12, 23);
-  ctx.lineTo(-15, -3);
+  if (model === "courier") {
+    ctx.moveTo(0, -40); ctx.lineTo(10, -5); ctx.lineTo(7, 31); ctx.lineTo(0, 36); ctx.lineTo(-7, 31); ctx.lineTo(-10, -5);
+  } else if (model === "prospector") {
+    ctx.moveTo(0, -29); ctx.lineTo(18, -11); ctx.lineTo(21, 21); ctx.lineTo(9, 32); ctx.lineTo(-9, 32); ctx.lineTo(-21, 21); ctx.lineTo(-18, -11);
+  } else if (model === "vanguard") {
+    ctx.moveTo(0, -34); ctx.lineTo(23, -8); ctx.lineTo(20, 25); ctx.lineTo(8, 33); ctx.lineTo(-8, 33); ctx.lineTo(-20, 25); ctx.lineTo(-23, -8);
+  } else {
+    ctx.moveTo(0, -33); ctx.lineTo(15, -3); ctx.lineTo(12, 23); ctx.lineTo(4, 30); ctx.lineTo(-4, 30); ctx.lineTo(-12, 23); ctx.lineTo(-15, -3);
+  }
   ctx.closePath();
   ctx.fill();
 
@@ -3975,34 +4516,35 @@ function drawPlayer() {
   ctx.restore();
   if (state.shield > 0) {
     const ratio = state.shield / shipStats().maxShield;
+    const shieldRadius = player.radius * 1.75;
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(performance.now() * .00018);
     ctx.setLineDash([5, 5]);
     ctx.lineWidth = depthMode === "enhanced" ? 1.55 : 1.2;
     ctx.strokeStyle = `rgba(57,221,255,${.12 + ratio * .18})`;
-    ctx.beginPath(); ctx.arc(0, 0, 28, -.5, Math.PI * 1.42); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, shieldRadius - 5, -.5, Math.PI * 1.42); ctx.stroke();
     ctx.rotate(-performance.now() * .00036);
     ctx.strokeStyle = `rgba(147,239,255,${.08 + ratio * .12})`;
-    ctx.beginPath(); ctx.arc(0, 0, 33, 1.2, Math.PI * 2.15); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, shieldRadius, 1.2, Math.PI * 2.15); ctx.stroke();
     if (depthMode === "enhanced") {
       ctx.globalAlpha = .06 + ratio * .06;
       ctx.fillStyle = "#39ddff";
-      ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, shieldRadius + 1, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
     }
     ctx.setLineDash([]);
     if (shieldImpact > 0) {
       ctx.rotate(shieldHitAngle - player.angle);
-      const impactGradient = ctx.createRadialGradient(25, 0, 0, 25, 0, 18);
+      const impactGradient = ctx.createRadialGradient(shieldRadius - 7, 0, 0, shieldRadius - 7, 0, 18);
       impactGradient.addColorStop(0, `rgba(220,252,255,${shieldImpact})`);
       impactGradient.addColorStop(.35, `rgba(57,221,255,${shieldImpact * .8})`);
       impactGradient.addColorStop(1, "rgba(57,221,255,0)");
       ctx.fillStyle = impactGradient;
-      ctx.beginPath(); ctx.arc(27, 0, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(shieldRadius - 5, 0, 18, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = `rgba(215,252,255,${shieldImpact})`;
       ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(0, 0, 31, -.34, .34); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, shieldRadius - 2, -.34, .34); ctx.stroke();
     }
     ctx.restore();
   }
@@ -4287,8 +4829,13 @@ function setupEvents() {
   addEventListener("resize", resize);
   addEventListener("keydown", event => {
     const key = event.key.toLowerCase();
+    const textEntry = event.target instanceof HTMLElement && event.target.matches("input, textarea, select, [contenteditable='true']");
+    if (textEntry && key !== "escape") return;
     keys[key] = true;
+    $$(`[data-control-key="${key}"]`).forEach(element => element.classList.add("control-pressed"));
     if (key === "e" && !event.repeat) handleInteractionAction();
+    if (key === "q" && !event.repeat && !state.docked) toggleWeapon();
+    if (key === "r" && !event.repeat && !state.docked) cycleFireMode();
     if (key === "m" && !event.repeat && $("#helpPanel").classList.contains("hidden") && $("#deathPanel").classList.contains("hidden")) {
       if ($("#mapPanel").classList.contains("hidden")) openMap(); else closeMap();
     }
@@ -4298,7 +4845,11 @@ function setupEvents() {
       else if (!$("#helpPanel").classList.contains("hidden")) $("#helpPanel").classList.add("hidden");
     }
   });
-  addEventListener("keyup", event => keys[event.key.toLowerCase()] = false);
+  addEventListener("keyup", event => {
+    const key = event.key.toLowerCase();
+    keys[key] = false;
+    $$(`[data-control-key="${key}"]`).forEach(element => element.classList.remove("control-pressed"));
+  });
   canvas.addEventListener("mousemove", event => { mouse.x = event.clientX; mouse.y = event.clientY; });
   canvas.addEventListener("mousedown", event => { if (event.button === 0) mouse.down = true; });
   addEventListener("mouseup", event => { if (event.button === 0) mouse.down = false; });
@@ -4317,6 +4868,9 @@ function setupEvents() {
 
   $("#undockBtn").addEventListener("click", undock);
   $("#hubUndockBtn")?.addEventListener("click", undock);
+  $("#weaponSwitchBtn")?.addEventListener("click", toggleWeapon);
+  $("#fireModeBtn")?.addEventListener("click", cycleFireMode);
+  $("#contextActionBtn")?.addEventListener("click", handleInteractionAction);
   $("#repairBtn").addEventListener("click", repairShip);
   $("#settingsBtn").addEventListener("click", openSettings);
   $$("[data-open-settings]").forEach(button => button.addEventListener("click", openSettings));
@@ -4418,9 +4972,18 @@ function init() {
   initializeMarkets();
   createAIPilots(Number(state.aiCount) || 16);
   initializeMissionBaselines();
+  if (!SHIP_HULLS[state.activeShip]) state.activeShip = "pioneer";
+  state.ownedShips = { pioneer: state.activeShip === "pioneer" ? "active" : (state.ownedShips?.pioneer || state.currentSystem), ...(state.ownedShips || {}), [state.activeShip]: "active" };
+  const activeHull = activeShipHull();
+  state.maxFuel = activeHull.stats.fuel;
+  state.fuel = Math.min(state.fuel, state.maxFuel);
+  player.radius = activeHull.stats.radius;
   const stats = shipStats();
   if (!Number.isFinite(state.shield)) state.shield = stats.maxShield;
   if (!Number.isFinite(state.hull)) state.hull = stats.maxHull;
+  if (!Number.isFinite(state.capacitor)) state.capacitor = stats.maxCapacitor;
+  if (state.activeWeapon === "fitted" && !state.fittedPlugins?.weapon) state.activeWeapon = "pulse";
+  if (!FIRE_MODES[state.fireMode]) state.fireMode = "balanced";
   resize();
   setupEvents();
   resetWorld();
@@ -4446,6 +5009,7 @@ window.__game = {
   get audioEngine() { return audioEngine; },
   systems: SYSTEMS,
   goods: GOODS,
+  enemyTypes: ENEMY_TYPES,
   damageTypes: DAMAGE_TYPES,
   stationIndustry: STATION_INDUSTRY,
   undock,
@@ -4454,6 +5018,9 @@ window.__game = {
   buyItem,
   sellItem,
   spawnEnemy,
+  shootPlayer,
+  toggleWeapon,
+  cycleFireMode,
   spawnAsteroid,
   createAIPilots,
   runAIEconomicAction,
