@@ -68,14 +68,16 @@ let browser;
   });
   await page.click('[data-station-tab="shipyard"]');
   await page.waitForFunction(() => document.querySelector("#shipyardTab").classList.contains("active"));
+  await page.click('[data-shipyard-view-choice="manufacturing"]');
   const preview = await page.evaluate(() => {
     const railgun = document.querySelector('[data-craft-plugin="railgun"]').closest(".plugin-card");
     const shield = document.querySelector('[data-craft-plugin="shield_amp"]').closest(".plugin-card");
     return {
       currentDamage: window.__game.shipStats().damage,
-      railgun: railgun.querySelector(".fitting-preview").innerText,
-      shield: shield.querySelector(".fitting-preview").innerText,
-      previewCount: document.querySelectorAll(".fitting-preview").length
+      railgun: railgun.querySelector(".fitting-preview").textContent,
+      shield: shield.querySelector(".fitting-preview").textContent,
+      previewCount: document.querySelectorAll(".fitting-preview").length,
+      collapsedByDefault: document.querySelectorAll(".plugin-details[open]").length === 0
     };
   });
   await page.click('[data-craft-plugin="railgun"]');
@@ -91,7 +93,7 @@ let browser;
   if (initialJournal.pathCount !== 4 || initialJournal.active !== "explorer") throw new Error(`Career journal initialization failed: ${JSON.stringify(initialJournal)}`);
   if (progressedJournal.tracked !== "industrialist" || !progressedJournal.completed || !progressedJournal.industrialist.includes("100%")) throw new Error(`Career tracking failed: ${JSON.stringify(progressedJournal)}`);
   if (!progressedJournal.explorer.includes("44%")) throw new Error(`Untracked progress did not accumulate: ${JSON.stringify(progressedJournal)}`);
-  if (preview.previewCount !== 9 || !preview.railgun.includes("单发") || !preview.railgun.includes("+3") || !preview.shield.includes("+45")) throw new Error(`Fitting preview failed: ${JSON.stringify(preview)}`);
+  if (preview.previewCount !== 9 || !preview.collapsedByDefault || !preview.railgun.includes("单发") || !preview.railgun.includes("+3") || !preview.shield.includes("+45")) throw new Error(`Fitting preview failed: ${JSON.stringify(preview)}`);
   if (installed.fitted !== "railgun" || installed.activeWeapon !== "fitted" || Math.abs(installed.damage - 15) > .01) throw new Error(`Preview did not match installed stats: ${JSON.stringify({ preview, installed })}`);
   if (errors.length) throw new Error(`Browser errors: ${errors.join(" | ")}`);
 

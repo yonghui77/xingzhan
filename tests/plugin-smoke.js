@@ -41,6 +41,7 @@ let browser;
 
   await page.click('[data-hub-module="shipyard"]');
   await page.waitForFunction(() => document.querySelector("#shipyardTab").classList.contains("active"));
+  await page.click('[data-shipyard-view-choice="manufacturing"]');
   const before = await page.evaluate(() => ({
     damage: window.__game.shipStats().damage,
     shield: window.__game.shipStats().maxShield,

@@ -152,6 +152,7 @@ let browser;
 
   await page.evaluate(() => window.__game.state.credits = 10000);
   await page.click('[data-station-tab="shipyard"]');
+  await page.click('[data-shipyard-view-choice="upgrades"]');
   await page.locator('[data-upgrade="weapon"]').click();
   const weaponLevel = await page.evaluate(() => window.__game.state.upgrades.weapon);
   console.log("step:upgraded");

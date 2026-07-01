@@ -2869,6 +2869,14 @@ function activateStationTab(tabId, options = {}) {
   if (!options.skipRender) renderStation();
 }
 
+function activateShipyardView(view) {
+  const allowed = ["hulls", "fitting", "manufacturing", "upgrades"];
+  const next = allowed.includes(view) ? view : "hulls";
+  $("#shipyardTab").dataset.shipyardView = next;
+  $$("[data-shipyard-view-choice]").forEach(button => button.classList.toggle("active", button.dataset.shipyardViewChoice === next));
+  $("#shipyardTab").scrollTop = 0;
+}
+
 function openHubModule(module) {
   if (module === "settings") return openSettings();
   if (module === "map") return openMap();
@@ -3342,6 +3350,33 @@ function handleChartHover(event) {
   requestAnimationFrame(() => drawMarketChart(marketChartCache.itemKey));
 }
 
+function focusMarketChart() {
+  if (!marketChartCache) drawMarketChart(selectedMarketItem);
+  if (!marketChartCache) return;
+  marketChartHover = {
+    active: true,
+    index: marketChartCache.points.length - 1,
+    systemId: marketChartCache.systemId,
+    itemKey: marketChartCache.itemKey
+  };
+  requestAnimationFrame(() => drawMarketChart(marketChartCache.itemKey));
+}
+
+function handleChartKeyboard(event) {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  event.preventDefault();
+  if (!marketChartCache) drawMarketChart(selectedMarketItem);
+  if (!marketChartCache) return;
+  const last = marketChartCache.points.length - 1;
+  let index = marketChartHover?.active ? marketChartHover.index : last;
+  if (event.key === "ArrowLeft") index = Math.max(0, index - 1);
+  if (event.key === "ArrowRight") index = Math.min(last, index + 1);
+  if (event.key === "Home") index = 0;
+  if (event.key === "End") index = last;
+  marketChartHover = { active: true, index, systemId: marketChartCache.systemId, itemKey: marketChartCache.itemKey };
+  requestAnimationFrame(() => drawMarketChart(marketChartCache.itemKey));
+}
+
 function renderMarketSystemPicker() {
   const picker = $("#marketSystemSelect");
   if (!picker) return;
@@ -3688,6 +3723,7 @@ function renderShipHullRoster() {
   const previewOnly = previewId !== state.activeShip;
   $("#shipyardShipDescription").textContent = `${settings.language === "en" ? preview.descriptionEn : preview.description}${previewOnly ? (settings.language === "en" ? " Preview only; the fitting panel still belongs to your active ship." : " 当前仅预览舰体；右侧插件区仍属于正在使用的舰船。") : ""}`;
   $("#shipyardHullModel").dataset.hull = previewId;
+  $("#shipyardHullModel").parentElement.dataset.hullArt = previewId;
   $("#shipHullRoster").innerHTML = Object.entries(SHIP_HULLS).map(([id, hull]) => {
     const active = id === state.activeShip;
     const owned = !!state.ownedShips?.[id];
@@ -3701,12 +3737,15 @@ function renderShipHullRoster() {
     return `
       <article class="ship-hull-card ${active ? "active" : ""} ${previewId === id ? "previewing" : ""}" style="--hull-color:${hull.color}">
         <button class="ship-hull-select" data-preview-hull="${id}">
-          <i>${hull.visual.model === "courier" ? "➤" : hull.visual.model === "prospector" ? "◆" : hull.visual.model === "vanguard" ? "⬢" : "△"}</i>
+          <i class="hull-art" data-hull-art="${id}" aria-hidden="true"></i>
           <span><strong>${settings.language === "en" ? hull.en : hull.name}</strong><small>${settings.language === "en" ? hull.roleEn : hull.role}</small></span>
           <b>${shipLocationText(id)}</b>
         </button>
-        <div class="hull-stat-strip"><span>盾 ${hull.stats.maxShield}</span><span>甲 ${hull.stats.maxHull}</span><span>舱 ${hull.stats.cargo}</span><span>速 ${hull.stats.speed}</span></div>
-        <div class="hull-materials">${hullMaterialText(hull)}</div>
+        <details class="hull-card-details">
+          <summary>${settings.language === "en" ? "Specs & build" : "参数与建造"}</summary>
+          <div class="hull-stat-strip"><span>盾 ${hull.stats.maxShield}</span><span>甲 ${hull.stats.maxHull}</span><span>舱 ${hull.stats.cargo}</span><span>速 ${hull.stats.speed}</span></div>
+          <div class="hull-materials">${hullMaterialText(hull)}</div>
+        </details>
         ${action}
       </article>`;
   }).join("");
@@ -3749,11 +3788,16 @@ function renderUpgrades() {
         return `
           <article class="plugin-card" style="--plugin-color:${raw.color}">
             <header><i>${raw.icon}</i><span><small>${plugin.slotName} · ${raw.rarity}</small><strong>${plugin.name}</strong></span><b>${count}</b></header>
-            <p>${settings.language === "en" ? raw.description : raw.description}</p>
-            ${renderFittingPreview(id)}
-            <div class="craft-recipe">${pluginInputText(raw.inputs)}</div>
+            <p class="plugin-brief">${settings.language === "en" ? raw.description : raw.description}</p>
+            <details class="plugin-details">
+              <summary>${settings.language === "en" ? "Stats & materials" : "参数与材料"}</summary>
+              <div class="plugin-details-body">
+                ${renderFittingPreview(id)}
+                <div class="craft-recipe">${pluginInputText(raw.inputs)}</div>
+              </div>
+            </details>
             <footer>
-              <button class="procurement-button" data-procure-plugin="${id}" ${quote.canPurchase ? "" : "disabled"} title="${procurementButtonLabel(quote)}">⌑ ${procurementButtonLabel(quote)}</button>
+              <button class="procurement-button" data-procure-plugin="${id}" ${quote.canPurchase ? "" : "disabled"} title="${procurementButtonLabel(quote)}">＋ ${procurementButtonLabel(quote)}</button>
               <button data-craft-plugin="${id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Manufacture" : "制造"}</button>
               <button data-install-plugin="${id}" ${count > 0 && !installed ? "" : "disabled"}>${installed ? (settings.language === "en" ? "Installed" : "已安装") : (settings.language === "en" ? "Fit" : "安装")}</button>
             </footer>
@@ -4052,12 +4096,16 @@ function renderHangar() {
     const quote = procurementQuote(recipe.inputs);
     return `
       <article class="craft-card">
-        <h4>${recipe.name}</h4>
-        <p>${recipe.description}</p>
-        <div class="craft-recipe">${inputText}<br><b>→ ${localizedGood(recipe.output.item).name} × ${outputAmount}</b></div>
-        <small class="station-craft-bonus ${outputBonus > 0 ? "active" : ""}">${settings.language === "en" ? industry.en : industry.name}${outputBonus > 0 ? ` · +${outputBonus} ${settings.language === "en" ? "local yield" : "本地产出"}` : ""}</small>
+        <header class="craft-card-head"><h4>${recipe.name}</h4><b>× ${outputAmount}</b></header>
+        <p class="craft-brief">${recipe.description}</p>
+        <div class="craft-output">→ ${localizedGood(recipe.output.item).name}</div>
+        <details class="craft-details">
+          <summary>${settings.language === "en" ? "Materials & line" : "材料与产线"}</summary>
+          <div class="craft-recipe">${inputText}</div>
+          <small class="station-craft-bonus ${outputBonus > 0 ? "active" : ""}">${settings.language === "en" ? industry.en : industry.name}${outputBonus > 0 ? ` · +${outputBonus} ${settings.language === "en" ? "local yield" : "本地产出"}` : ""}</small>
+        </details>
         <div class="craft-actions">
-          <button class="procurement-button" data-procure-recipe="${recipe.id}" ${quote.canPurchase ? "" : "disabled"} title="${procurementButtonLabel(quote)}">⌑ ${procurementButtonLabel(quote)}</button>
+          <button class="procurement-button" data-procure-recipe="${recipe.id}" ${quote.canPurchase ? "" : "disabled"} title="${procurementButtonLabel(quote)}">＋ ${procurementButtonLabel(quote)}</button>
           <button data-craft-recipe="${recipe.id}" ${canCraft ? "" : "disabled"}>${settings.language === "en" ? "Craft to Storage" : "制作到仓库"}</button>
         </div>
       </article>`;
@@ -4921,6 +4969,7 @@ function setupEvents() {
     } else acceptContract(CONTRACT_LIBRARY[0].id);
   });
   $$(".station-tabs button").forEach(button => button.addEventListener("click", () => activateStationTab(button.dataset.stationTab)));
+  $$("[data-shipyard-view-choice]").forEach(button => button.addEventListener("click", () => activateShipyardView(button.dataset.shipyardViewChoice)));
   $$("[data-hub-module]").forEach(button => button.addEventListener("click", () => openHubModule(button.dataset.hubModule)));
   document.addEventListener("click", event => {
     const button = event.target.closest?.("[data-story-action]");
@@ -4950,6 +4999,9 @@ function setupEvents() {
   });
   $("#marketChart").addEventListener("mousemove", handleChartHover);
   $("#marketChart").addEventListener("mouseleave", hideChartTooltip);
+  $("#marketChart").addEventListener("focus", focusMarketChart);
+  $("#marketChart").addEventListener("keydown", handleChartKeyboard);
+  $("#marketChart").addEventListener("blur", hideChartTooltip);
   $$(".quantity-presets button").forEach(button => button.addEventListener("click", () => {
     const available = marketMode === "buy"
       ? Math.floor(state.markets[marketViewSystem()][selectedMarketItem].stock)

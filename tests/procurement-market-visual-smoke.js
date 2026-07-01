@@ -78,6 +78,7 @@ let browser;
   await page.screenshot({ path: path.join(__dirname, "one-click-procurement-smoke.png"), fullPage: true });
   await page.click('[data-station-tab="shipyard"]');
   await page.waitForFunction(() => document.querySelector("#shipyardTab").classList.contains("active"));
+  await page.click('[data-shipyard-view-choice="manufacturing"]');
   const pluginButtonText = await page.locator('[data-procure-plugin="railgun"]').textContent();
   await page.click('[data-procure-plugin="railgun"]');
   await page.waitForTimeout(100);

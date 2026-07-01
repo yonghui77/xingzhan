@@ -85,8 +85,10 @@ let browser;
     vital: document.querySelector("#shipVitals").dataset.hull
   }));
 
+  await page.click('[data-shipyard-view-choice="manufacturing"]');
   await page.click('[data-craft-plugin="railgun"]');
   await page.click('[data-install-plugin="railgun"]');
+  await page.click('[data-shipyard-view-choice="hulls"]');
   await page.evaluate(() => {
     window.__game.state.cargo = { ore: 31 };
     window.__game.renderStation();

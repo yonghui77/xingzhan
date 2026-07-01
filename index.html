@@ -55,7 +55,7 @@
     <aside class="right-hud">
       <section class="hud-card radar-card">
         <div class="card-title"><div><p>LOCAL SCANNER</p><strong>战术雷达</strong></div><span id="localCount">0 信号</span></div>
-        <canvas id="radarCanvas" width="240" height="170"></canvas>
+        <canvas id="radarCanvas" width="240" height="170" role="img" aria-label="战术雷达：显示空间站、资源与敌对目标"></canvas>
         <div class="radar-legend">
           <span><i class="ally"></i>空间站</span><span><i class="resource"></i>资源</span><span><i class="hostile"></i>敌对</span>
         </div>
@@ -247,7 +247,7 @@
               <div class="market-analysis">
                 <section class="price-chart-panel">
                   <div class="terminal-section-head"><strong>价格走势</strong><span>最近24个周期</span></div>
-                  <canvas id="marketChart" width="560" height="220"></canvas>
+                  <canvas id="marketChart" width="560" height="220" tabindex="0" role="img" aria-label="价格走势图：移动鼠标查看各周期价格、涨跌与库存"></canvas>
                   <div id="chartTooltip" class="chart-tooltip hidden"></div>
                 </section>
                 <section class="order-book-panel">
@@ -287,7 +287,13 @@
             </aside>
           </div>
         </div>
-        <div id="shipyardTab" class="station-tab">
+        <div id="shipyardTab" class="station-tab" data-shipyard-view="hulls">
+          <nav class="shipyard-view-tabs" aria-label="舰船维护分类">
+            <button class="active" data-shipyard-view-choice="hulls">舰体</button>
+            <button data-shipyard-view-choice="fitting">装配</button>
+            <button data-shipyard-view-choice="manufacturing">制造</button>
+            <button data-shipyard-view-choice="upgrades">升级</button>
+          </nav>
           <div class="upgrade-layout">
             <div class="upgrade-intro">
               <p>SHIP FITTING</p><h2 id="shipyardShipTitle">拓荒者级模块舱</h2>
@@ -495,7 +501,7 @@
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">MULTI-HULL FLEET · BUILD 0.50</div>
+    <div class="version">PLAYABILITY PASS · BUILD 0.51</div>
   </div>
   <script src="game.js"></script>
 </body>
