@@ -826,6 +826,34 @@ function closeSettings() {
   paused = state.docked || !$("#mapPanel").classList.contains("hidden") || !$("#helpPanel").classList.contains("hidden");
 }
 
+function renderShipViewerData() {
+  const hull = activeShipHull();
+  const stats = shipStats();
+  const installed = Object.values(state.fittedPlugins || {}).filter(Boolean).map(id => localizedPlugin(id)?.name || id);
+  $("#viewerShipName").textContent = settings.language === "en" ? hull.en : hull.name;
+  $("#viewerShipRole").textContent = settings.language === "en" ? hull.roleEn : hull.role;
+  $("#viewerShieldStat").textContent = `${Math.ceil(state.shield)} / ${stats.maxShield}`;
+  $("#viewerHullStat").textContent = `${Math.ceil(state.hull)} / ${stats.maxHull}`;
+  $("#viewerDamageStat").textContent = Math.round(stats.damage);
+  $("#viewerSpeedStat").textContent = Math.round(stats.speed);
+  $("#viewerCargoStat").textContent = stats.cargo;
+  $("#viewerLoadout").textContent = installed.length ? installed.join(" · ") : (settings.language === "en" ? "Base configuration" : "基础配置");
+}
+
+function openShipViewer() {
+  renderShipViewerData();
+  $("#shipViewerPanel").classList.remove("hidden");
+  paused = true;
+}
+
+function closeShipViewer() {
+  $("#shipViewerPanel").classList.add("hidden");
+  paused = state.docked ||
+    !$("#settingsPanel").classList.contains("hidden") ||
+    !$("#mapPanel").classList.contains("hidden") ||
+    !$("#helpPanel").classList.contains("hidden");
+}
+
 function setSetting(key, value, previewSound = false) {
   settings[key] = value;
   if (key === "uiSize") applyTextSize(value);
@@ -4327,22 +4355,107 @@ function screenToWorld(x, y) {
 
 function draw() {
   ctx.clearRect(0, 0, innerWidth, innerHeight);
-  drawBackground();
-  drawWorldBounds();
-  drawStation();
-  drawPirateOutpost();
-  world.asteroids.forEach(drawAsteroid);
+  const localAI = aiPilots.filter(pilot => pilot.system === state.currentSystem);
+  const rendered3D = window.Space3D?.renderFlight({
+    time: performance.now(),
+    depth: settings.depthFx,
+    quality: settings.quality,
+    systemColor: SYSTEMS[state.currentSystem].color,
+    camera,
+    station: world.station,
+    outpost: world.outpost,
+    asteroids: world.asteroids,
+    enemies: world.enemies,
+    ai: localAI.map(pilot => ({ ...pilot, color: AI_ROLES[pilot.role]?.color || "#53e8ff" })),
+    bullets: world.bullets,
+    enemyBullets: world.enemyBullets,
+    loot: world.loot.map(loot => ({ ...loot, color: GOODS[loot.item]?.color })),
+    player,
+    hull: activeShipHull(),
+    shield: state.shield,
+    docked: state.docked
+  });
+  window.Space3D?.renderDock({
+    time: performance.now(),
+    depth: settings.depthFx,
+    quality: settings.quality,
+    hull: activeShipHull()
+  });
+  window.Space3D?.renderViewer({
+    time: performance.now(),
+    hull: activeShipHull(),
+    fitted: state.fittedPlugins
+  });
+  if (!rendered3D) {
+    drawBackground();
+    drawWorldBounds();
+    drawStation();
+    drawPirateOutpost();
+    world.asteroids.forEach(drawAsteroid);
+    world.loot.forEach(drawLoot);
+    world.bullets.forEach(bullet => drawBullet(bullet, "#55e5ff"));
+    world.enemyBullets.forEach(bullet => drawBullet(bullet, "#ff607a"));
+    world.enemies.forEach(drawEnemy);
+    localAI.forEach(drawAIPilot);
+    if (!state.docked) drawPlayer();
+  } else {
+    draw3DWorldLabels(localAI);
+    world.loot.forEach(drawLoot);
+  }
   drawMiningBeam();
-  world.loot.forEach(drawLoot);
-  world.bullets.forEach(bullet => drawBullet(bullet, "#55e5ff"));
-  world.enemyBullets.forEach(bullet => drawBullet(bullet, "#ff607a"));
-  world.enemies.forEach(drawEnemy);
-  aiPilots.filter(pilot => pilot.system === state.currentSystem).forEach(drawAIPilot);
   world.particles.forEach(drawParticle);
   world.combatText.forEach(drawCombatText);
-  if (!state.docked) drawPlayer();
   drawRadar();
   updateTargetHud();
+}
+
+function draw3DWorldLabels(localAI) {
+  const stationPoint = worldToScreen(world.station.x, world.station.y);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(213,235,255,.82)";
+  ctx.font = "10px Microsoft YaHei";
+  ctx.fillText(SYSTEMS[state.currentSystem].station, stationPoint.x, stationPoint.y + 105);
+  world.enemies.forEach(enemy => {
+    const point = worldToScreen(enemy.x, enemy.y);
+    const spec = ENEMY_TYPES[enemy.type] || ENEMY_TYPES.interceptor;
+    const width = 46;
+    ctx.fillStyle = "rgba(0,0,0,.52)";
+    ctx.fillRect(point.x - width / 2, point.y - enemy.r - 24, width, 3);
+    ctx.fillStyle = "#53e8ff";
+    ctx.fillRect(point.x - width / 2, point.y - enemy.r - 24, width * (enemy.maxShield ? enemy.shield / enemy.maxShield : 0), 3);
+    ctx.fillStyle = "rgba(0,0,0,.52)";
+    ctx.fillRect(point.x - width / 2, point.y - enemy.r - 19, width, 3);
+    ctx.fillStyle = spec.color;
+    ctx.fillRect(point.x - width / 2, point.y - enemy.r - 19, width * enemy.hp / enemy.maxHp, 3);
+    if (enemy.state !== "patrol") {
+      ctx.fillStyle = spec.color;
+      ctx.font = "7px Microsoft YaHei";
+      ctx.fillText(enemy.state === "attack" ? "攻击" : enemy.state === "retreat" ? "撤退" : "锁定", point.x, point.y + enemy.r + 18);
+    }
+  });
+  localAI.forEach(pilot => {
+    const point = worldToScreen(pilot.x, pilot.y);
+    const role = AI_ROLES[pilot.role];
+    ctx.fillStyle = "#9cabc1";
+    ctx.font = "7px Microsoft YaHei";
+    ctx.globalAlpha = .78;
+    ctx.fillText(pilot.name, point.x, point.y + 27);
+    ctx.fillStyle = role.color;
+    ctx.fillText(role.name, point.x, point.y + 37);
+    ctx.globalAlpha = 1;
+  });
+  const outpost = world.outpost;
+  if (outpost?.active) {
+    const point = worldToScreen(outpost.x, outpost.y);
+    const ratio = outpost.shield > 0 ? outpost.shield / outpost.maxShield : outpost.hp / outpost.maxHp;
+    ctx.fillStyle = "rgba(0,0,0,.55)";
+    ctx.fillRect(point.x - 50, point.y - 103, 100, 5);
+    ctx.fillStyle = outpost.shield > 0 ? "#a980ff" : "#ff617b";
+    ctx.fillRect(point.x - 50, point.y - 103, 100 * ratio, 5);
+    ctx.fillStyle = "#ffb4c0";
+    ctx.font = "9px Microsoft YaHei";
+    ctx.fillText(outpost.name, point.x, point.y + 108);
+  }
 }
 
 function drawBackground() {
@@ -4879,6 +4992,8 @@ function setupEvents() {
     const key = event.key.toLowerCase();
     const textEntry = event.target instanceof HTMLElement && event.target.matches("input, textarea, select, [contenteditable='true']");
     if (textEntry && key !== "escape") return;
+    const viewerOpen = !$("#shipViewerPanel").classList.contains("hidden");
+    if (viewerOpen && key !== "escape") return;
     keys[key] = true;
     $$(`[data-control-key="${key}"]`).forEach(element => element.classList.add("control-pressed"));
     if (key === "e" && !event.repeat) handleInteractionAction();
@@ -4888,7 +5003,8 @@ function setupEvents() {
       if ($("#mapPanel").classList.contains("hidden")) openMap(); else closeMap();
     }
     if (key === "escape") {
-      if (!$("#settingsPanel").classList.contains("hidden")) closeSettings();
+      if (viewerOpen) closeShipViewer();
+      else if (!$("#settingsPanel").classList.contains("hidden")) closeSettings();
       else if (!$("#mapPanel").classList.contains("hidden")) closeMap();
       else if (!$("#helpPanel").classList.contains("hidden")) $("#helpPanel").classList.add("hidden");
     }
@@ -4919,6 +5035,9 @@ function setupEvents() {
   $("#weaponSwitchBtn")?.addEventListener("click", toggleWeapon);
   $("#fireModeBtn")?.addEventListener("click", cycleFireMode);
   $("#contextActionBtn")?.addEventListener("click", handleInteractionAction);
+  $("#flightShipInspectBtn")?.addEventListener("click", openShipViewer);
+  $("#dockShipInspectBtn")?.addEventListener("click", openShipViewer);
+  $("#closeShipViewerBtn")?.addEventListener("click", closeShipViewer);
   $("#repairBtn").addEventListener("click", repairShip);
   $("#settingsBtn").addEventListener("click", openSettings);
   $$("[data-open-settings]").forEach(button => button.addEventListener("click", openSettings));

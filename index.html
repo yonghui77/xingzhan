@@ -9,6 +9,7 @@
 </head>
 <body data-ui-size="large">
   <div id="app">
+    <canvas id="space3DCanvas" aria-hidden="true"></canvas>
     <canvas id="gameCanvas"></canvas>
 
     <header class="topbar">
@@ -81,7 +82,7 @@
         <button id="contextActionBtn" class="ability context-action" type="button" data-control-key="e" disabled><kbd>E</kbd><span id="contextActionName">扫描交互</span><small id="contextActionHint">靠近可交互目标</small></button>
       </div>
       <section id="shipVitals" class="ship-vitals" aria-label="舰船状态">
-        <div class="vital-title"><strong id="shipName">拓荒者级</strong><span id="shipVitalStatus"><i></i>稳定</span></div>
+        <div class="vital-title"><strong id="shipName">拓荒者级</strong><span id="shipVitalStatus"><i></i>稳定</span><button id="flightShipInspectBtn" class="ship-inspect-chip" type="button" title="查看当前舰船 3D 模型">3D</button></div>
         <div class="vital-rings" id="shieldOrb">
           <div class="hull-ring">
             <div class="vital-core">
@@ -189,6 +190,7 @@
 
             <section class="station-visual dock-showcase">
               <div class="station-viewport">
+                <canvas id="station3DCanvas" aria-label="当前舰船三维机库展示"></canvas>
                 <div class="hangar-lights"></div>
                 <div class="station-ring ring-a"></div>
                 <div class="station-ring ring-b"></div>
@@ -198,7 +200,7 @@
                   <i class="ship-keel"></i><i class="ship-nose"></i><i class="ship-core"></i><i class="ship-spine"></i><i class="ship-cockpit"></i><i class="ship-wing left"></i><i class="ship-wing right"></i><i class="ship-engine left"></i><i class="ship-engine right"></i><i class="ship-engine center"></i><i class="ship-engine outer-left"></i><i class="ship-engine outer-right"></i>
                 </div>
                 <div class="dock-beam"></div>
-                <div class="ship-label-card"><span id="hubShipClass">PIONEER CLASS</span><b id="hubShipIntegrity">护盾 100%</b></div>
+                <div class="ship-label-card"><span id="hubShipClass">PIONEER CLASS</span><b id="hubShipIntegrity">护盾 100%</b><button id="dockShipInspectBtn" type="button">3D 查看</button></div>
               </div>
               <div class="dock-status-grid">
                 <div><span id="hubSecurityLabel">安全等级</span><b id="hubSecurity">1.0</b></div>
@@ -434,8 +436,8 @@
 
           <section class="setting-row">
             <div>
-              <strong>3D视觉效果</strong>
-              <span>控制机库透视、面板层次、星空视差和舰船模型光影。</span>
+              <strong>实时 3D 渲染</strong>
+              <span>控制 WebGL 舰船、矿石、空间站、机库光影与界面空间层级；关闭后自动使用 2D 模式。</span>
             </div>
             <div class="segmented-control" id="depthOptions">
               <button data-depth-choice="off">关闭</button>
@@ -496,13 +498,36 @@
       </div>
     </section>
 
+    <section id="shipViewerPanel" class="modal ship-viewer-panel hidden" aria-label="舰船三维模型查看器">
+      <div class="ship-viewer-shell">
+        <header>
+          <div><p>VESSEL INSPECTION</p><h2 id="viewerShipName">拓荒者级</h2><span id="viewerShipRole">多用途护卫舰</span></div>
+          <button id="closeShipViewerBtn" class="icon-btn" type="button" aria-label="关闭舰船查看器">×</button>
+        </header>
+        <div class="ship-viewer-stage">
+          <canvas id="shipViewerCanvas" aria-label="可旋转缩放的当前舰船三维模型"></canvas>
+          <div class="viewer-axis"><span>拖拽旋转</span><span>滚轮缩放</span><span>双击自动旋转</span></div>
+          <div class="viewer-watermark">REALTIME WEBGL MODEL</div>
+        </div>
+        <footer>
+          <div class="viewer-stat"><span>护盾</span><b id="viewerShieldStat">100</b></div>
+          <div class="viewer-stat"><span>装甲</span><b id="viewerHullStat">100</b></div>
+          <div class="viewer-stat"><span>火力</span><b id="viewerDamageStat">12</b></div>
+          <div class="viewer-stat"><span>航速</span><b id="viewerSpeedStat">240</b></div>
+          <div class="viewer-stat"><span>货舱</span><b id="viewerCargoStat">30</b></div>
+          <div class="viewer-loadout"><span>当前装配</span><b id="viewerLoadout">基础配置</b></div>
+        </footer>
+      </div>
+    </section>
+
     <section id="deathPanel" class="modal hidden">
       <div class="death-shell"><p>SHIP DESTROYED</p><h2>舰船已损毁</h2><span id="deathReport">保险公司已回收逃生舱。</span><button id="respawnBtn" class="button primary">返回晨星贸易站</button></div>
     </section>
 
     <div id="toast" class="toast"></div>
-    <div class="version">PLAYABILITY PASS · BUILD 0.51</div>
+    <div class="version">NATIVE WEBGL 3D · BUILD 0.60</div>
   </div>
+  <script src="space3d.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
